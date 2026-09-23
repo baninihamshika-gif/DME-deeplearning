@@ -1,0 +1,41 @@
+# DME OCT Detection — pinned to minor version so a Kaggle session and a
+# local dev environment resolve the same dependency tree. Bump deliberately,
+# not via a bare `pip install -U`.
+
+# --- Core deep learning ---
+torch==2.3.*
+torchvision==0.18.*
+timm==0.9.*
+
+# --- Segmentation (extended objectives, Phase 4) ---
+segmentation-models-pytorch==0.3.*
+
+# --- Augmentation ---
+albumentations==1.4.*
+
+# --- Explainability ---
+grad-cam==1.5.*
+
+# --- Metrics and plotting ---
+scikit-learn==1.4.*
+matplotlib==3.8.*
+seaborn==0.13.*
+
+# --- Interface ---
+gradio==4.*
+
+# --- Data / imaging ---
+numpy==1.26.*
+pandas==2.2.*
+opencv-python==4.9.*
+Pillow==10.*
+scipy==1.12.*
+
+# --- Kaggle automation (Phase 2.5) ---
+kaggle==1.6.*
+
+# --- Utilities ---
+tqdm==4.66.*
+
+# --- Testing ---
+pytest==8.*
