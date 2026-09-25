@@ -87,12 +87,16 @@ SOURCE_FILES = [
     "utils.py",
     "train.py",
     "prepare_data.py",
+    "segment.py",
     "requirements.txt",
 ]
-# evaluate.py / explain.py / segment.py / thickness.py / app.py belong here
-# once their phases land. _existing_source_files() skips (and warns about)
-# anything not on disk yet rather than failing, since Phase 2.5 is being
-# built before those files exist.
+# evaluate.py / explain.py / thickness.py / app.py belong here once their
+# phases land. _existing_source_files() skips (and warns about) anything not
+# on disk yet rather than failing, since Phase 2.5 is being built before
+# those files exist. segment.py added for Phase 4 -- run_segment.py's own
+# _stage_segment_source_dataset() re-stages the SAME dme-oct-src dataset
+# (now including segment.py) rather than a second source dataset, so it
+# needs to be in this shared list to ride along either way a push happens.
 #
 # entry.py is deliberately NOT in this list: it ships to Kaggle as the
 # kernel's own code_file via `kaggle kernels push` (see
@@ -388,16 +392,45 @@ def _dataset_exists(slug: str) -> bool:
     return result.returncode == 0
 
 
-def _run_kaggle_cli(cmd: list, error_context: str) -> str:
-    print(f"[run] {' '.join(cmd)}")
-    result = _run_subprocess(cmd)
-    if result.stdout:
-        print(result.stdout)
-    if result.returncode != 0:
+# Shared with classify_failure() below, which applies the same substring
+# test to a *fetched kernel run's* failure message/log -- this is the same
+# judgment call applied one layer earlier, to a `kaggle` CLI subprocess's own
+# stderr, before a kernel run even exists to classify.
+_INFRA_ERROR_KEYWORDS = ("session", "internal error", "unavailable", "timed out", "timeout", "disconnected")
+
+
+def _run_kaggle_cli(cmd: list, error_context: str, infra_retry: bool = False) -> str:
+    """
+    infra_retry=True retries a failing call up to config.KAGGLE_MAX_INFRA_RETRIES
+    times, but ONLY when the failure looks infra-side (stderr matches
+    _INFRA_ERROR_KEYWORDS) -- anything else (a real code/config error) still
+    raises immediately, same as infra_retry=False. Opt-in per call site
+    rather than the default for every `kaggle` CLI invocation this function
+    makes: most callers (dataset staging, `kernels pull`/`status`) have their
+    own polling/readiness logic around them already, where blind retries here
+    would just duplicate or race that. See config.KAGGLE_PUSH_INFRA_RETRY_DELAY_SEC
+    for why this exists at all -- a real `kernels push` 503 that this
+    couldn't have retried around otherwise (2026-09-23).
+    """
+    max_attempts = (config.KAGGLE_MAX_INFRA_RETRIES if infra_retry else 0) + 1
+    for attempt in range(1, max_attempts + 1):
+        print(f"[run] {' '.join(cmd)}")
+        result = _run_subprocess(cmd)
+        if result.stdout:
+            print(result.stdout)
+        if result.returncode == 0:
+            return result.stdout
         if result.stderr:
             print(result.stderr, file=sys.stderr)
+        is_infra = infra_retry and any(kw in (result.stderr or "").lower() for kw in _INFRA_ERROR_KEYWORDS)
+        if is_infra and attempt < max_attempts:
+            print(
+                f"[run] {error_context}: infra-looking failure (attempt {attempt}/{max_attempts}), "
+                f"retrying in {config.KAGGLE_PUSH_INFRA_RETRY_DELAY_SEC}s"
+            )
+            time.sleep(config.KAGGLE_PUSH_INFRA_RETRY_DELAY_SEC)
+            continue
         raise RuntimeError(f"{error_context} failed (exit {result.returncode})")
-    return result.stdout
 
 
 def get_dataset_status(slug: str) -> str:
@@ -537,7 +570,7 @@ def push(
 
     kernel_stage = config.KAGGLE_ARTIFACTS_DIR / "_kernel_stage"
     _stage_kernel_push_folder(kernel_stage)
-    _run_kaggle_cli(["kaggle", "kernels", "push", "-p", str(kernel_stage)], "kaggle kernels push")
+    _run_kaggle_cli(["kaggle", "kernels", "push", "-p", str(kernel_stage)], "kaggle kernels push", infra_retry=True)
 
     quota_log.append(
         {
@@ -674,14 +707,19 @@ def classify_failure(status: str, failure_message, log_text) -> str:
     if log_text and "Traceback (most recent call last)" in log_text:
         return "code_error"
     text = (failure_message or "").lower()
-    infra_keywords = ("session", "internal error", "unavailable", "timed out", "timeout", "disconnected")
-    if any(kw in text for kw in infra_keywords):
+    if any(kw in text for kw in _INFRA_ERROR_KEYWORDS):
         return "infra"
     return "code_error"  # default to the classification that never auto-retries when unsure
 
 
-def _parse_epoch_seconds_from_training_log(out_dir: Path):
-    log_path = out_dir / "artifacts" / "training_log.csv"
+def _parse_epoch_seconds_from_training_log(out_dir: Path, log_filename: str = "training_log.csv"):
+    # log_filename is a parameter (not just "training_log.csv" hardcoded) so
+    # run_segment.py can reuse this same CSV-parsing logic against segment.py's
+    # own log ("segmentation_training_log.csv", written under a different
+    # --artifacts-dir) without duplicating it -- both logs share the same
+    # epoch_time_sec column by construction (segment.py's _log_epoch_row
+    # deliberately matches train.py's csv logging convention).
+    log_path = out_dir / "artifacts" / log_filename
     if not log_path.exists():
         print(f"[run] note: {log_path} not found in fetched output, cannot record epoch timing")
         return None

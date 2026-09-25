@@ -107,6 +107,17 @@ KAGGLE_SMOKE_TIME_BUDGET_MIN = 10  # brief: smoke run must complete in under 10 
 KAGGLE_MAX_POLL_MIN = 6 * 60  # give up polling (classified as an infra timeout) after this long
 KAGGLE_MAX_INFRA_RETRIES = 2
 
+# `kaggle kernels push` itself is a separate failure point from poll()'s own
+# infra-retry loop (which only ever sees a kernel that has already started
+# running) -- confirmed the hard way (2026-09-23): a real push failed
+# outright with "503 Server Error: Service Unavailable" from Kaggle's own
+# SaveKernel API endpoint, before any kernel was ever created, so poll()
+# never got a chance to help. _run_kaggle_cli(..., infra_retry=True) now
+# retries a push call that fails with an infra-looking message (same keyword
+# list classify_failure() already uses) up to KAGGLE_MAX_INFRA_RETRIES times,
+# waiting this long between attempts.
+KAGGLE_PUSH_INFRA_RETRY_DELAY_SEC = 20
+
 # `kaggle datasets create`/`version` return as soon as the upload finishes,
 # not once Kaggle has finished processing the new version -- confirmed the
 # hard way (2026-09): the first real smoke push uploaded fine, then pushed
@@ -116,3 +127,41 @@ KAGGLE_MAX_INFRA_RETRIES = 2
 # on "ready" before pushing the kernel -- these bound that wait.
 KAGGLE_DATASET_READY_POLL_SEC = 10
 KAGGLE_DATASET_READY_TIMEOUT_MIN = 5
+
+# ---------------------------------------------------------------------------
+# Kaggle automation (Phase 4, extended -- segmentation)
+# ---------------------------------------------------------------------------
+# Duke DME dataset (Chiu et al. 2015) is redistribution-restricted (research/
+# educational use only, no redistribution -- see segment.py's module
+# docstring) and has no verified-structure public Kaggle mirror we could
+# confirm from this session (no live Kaggle API access to inspect one), so
+# it's uploaded as a NEW PRIVATE dataset under this account -- the same
+# already-verified local copy segment.py's rasterization gate was checked
+# against -- rather than an unreviewed public re-host.
+KAGGLE_DUKE_DATASET_SLUG = f"{KAGGLE_USERNAME}/dme-oct-duke-src"
+# The Phase 2 classifier checkpoint (needed to initialise the U-Net encoder)
+# only exists on the local machine (fetched from the classifier's own Kaggle
+# run) -- also uploaded as its own small private dataset rather than
+# guessed-at via kernel_sources' kernel-output-mount behaviour, which this
+# session has no way to verify against a live account either.
+KAGGLE_CLASSIFIER_CKPT_DATASET_SLUG = f"{KAGGLE_USERNAME}/dme-oct-classifier-ckpt"
+KAGGLE_SEGMENT_KERNEL_SLUG = f"{KAGGLE_USERNAME}/dme-oct-segment"
+
+KAGGLE_SEGMENT_LAST_SMOKE = KAGGLE_ARTIFACTS_DIR / "segment_last_smoke.json"
+# Deliberately NOT a separate quota log -- the 7-day/30h GPU cap is a single
+# real Kaggle-account-wide resource shared by every kernel on the account,
+# classifier and segmentation alike, so both pipelines must account against
+# the SAME KAGGLE_QUOTA_LOG for the guardrail to mean anything real. Each
+# entry's kernel_slug field is what estimate_segment_run_minutes() filters
+# on to avoid conflating the two pipelines' very different per-epoch costs.
+
+# segment.py's --smoke trains 1 epoch on the FULL annotated Duke set (110
+# scans total, no subsampling -- unlike the classifier's smoke, which trains
+# on a ~500-image SUBSET of a ~38k-image dataset). That matters for
+# estimate_segment_run_minutes(): a segmentation smoke run's epoch_seconds
+# is already representative of a real full-run epoch's cost, so the
+# classifier's ~9.7x-undershoot problem (smoke-subset vs full-dataset
+# per-epoch cost) should not recur here -- flagged as "should", not
+# confirmed, until a real smoke + real full run both exist to compare
+# (C6: no invented numbers).
+KAGGLE_SEGMENT_SMOKE_TIME_BUDGET_MIN = 15  # generous first-guess ceiling; tighten once a real smoke duration exists

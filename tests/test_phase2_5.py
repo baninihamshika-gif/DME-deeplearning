@@ -333,6 +333,60 @@ def test_run_subprocess_does_not_override_explicit_pythonioencoding():
     assert passed_env["PYTHONIOENCODING"] == "latin-1"
 
 
+# ---------------------------------------------------------------------------
+# _run_kaggle_cli(infra_retry=...): added 2026-09-23 after a REAL `kaggle
+# kernels push` failed outright with "503 Server Error: Service Unavailable"
+# from Kaggle's own API, a failure point poll()'s existing infra-retry loop
+# can never reach (that loop only fires once a kernel run is observable, and
+# this failure happened before any kernel run existed). Opt-in per call site
+# (infra_retry=False is the unchanged default) so the many OTHER call sites
+# of this function -- dataset staging in particular, which already has its
+# own wait_for_dataset_ready() polling -- don't silently start retrying too.
+# ---------------------------------------------------------------------------
+
+
+def test_run_kaggle_cli_default_does_not_retry_even_an_infra_looking_failure():
+    with patch("subprocess.run", return_value=_fake_completed(stderr="503 Service Unavailable", returncode=1)) as mock_run, \
+         patch("time.sleep") as mock_sleep:
+        with pytest.raises(RuntimeError, match="failed \\(exit 1\\)"):
+            run._run_kaggle_cli(["kaggle", "kernels", "push"], "kaggle kernels push")
+    assert mock_run.call_count == 1
+    mock_sleep.assert_not_called()
+
+
+def test_run_kaggle_cli_infra_retry_succeeds_after_a_transient_failure():
+    responses = [
+        _fake_completed(stderr="503 Server Error: Service Unavailable for url: ...", returncode=1),
+        _fake_completed(stdout="ok", returncode=0),
+    ]
+    with patch("subprocess.run", side_effect=responses) as mock_run, \
+         patch("time.sleep") as mock_sleep:
+        out = run._run_kaggle_cli(["kaggle", "kernels", "push"], "kaggle kernels push", infra_retry=True)
+    assert out == "ok"
+    assert mock_run.call_count == 2
+    mock_sleep.assert_called_once_with(config.KAGGLE_PUSH_INFRA_RETRY_DELAY_SEC)
+
+
+def test_run_kaggle_cli_infra_retry_does_not_retry_a_real_code_error():
+    with patch("subprocess.run", return_value=_fake_completed(stderr="Traceback (most recent call last):\nKeyError: 'x'", returncode=1)) as mock_run, \
+         patch("time.sleep") as mock_sleep:
+        with pytest.raises(RuntimeError):
+            run._run_kaggle_cli(["kaggle", "kernels", "push"], "kaggle kernels push", infra_retry=True)
+    assert mock_run.call_count == 1
+    mock_sleep.assert_not_called()
+
+
+def test_run_kaggle_cli_infra_retry_gives_up_after_max_infra_retries():
+    always_fails = _fake_completed(stderr="internal error, please try again", returncode=1)
+    with patch("subprocess.run", return_value=always_fails) as mock_run, \
+         patch("time.sleep") as mock_sleep:
+        with pytest.raises(RuntimeError):
+            run._run_kaggle_cli(["kaggle", "kernels", "push"], "kaggle kernels push", infra_retry=True)
+    # KAGGLE_MAX_INFRA_RETRIES retries on top of the first attempt.
+    assert mock_run.call_count == config.KAGGLE_MAX_INFRA_RETRIES + 1
+    assert mock_sleep.call_count == config.KAGGLE_MAX_INFRA_RETRIES
+
+
 def test_get_status_parses_success():
     with patch("subprocess.run", return_value=_fake_completed(stdout='someuser/dme-oct-train has status "complete"\n')):
         status, msg = run.get_status("someuser/dme-oct-train")
