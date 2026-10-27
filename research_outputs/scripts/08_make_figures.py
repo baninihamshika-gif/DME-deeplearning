@@ -216,7 +216,7 @@ def figure4():
     ax.set(xlabel="Epoch", ylabel="Weighted cross-entropy loss"); ax.set_title("c  ResNet-50 loss", loc="left"); ax.legend(fontsize=7.5)
     fig.suptitle("Training and Validation Performance Across Training Epochs", fontsize=11, y=1.03)
     fig.text(0.0, -0.08, "B3 per-epoch values were parsed from the Kaggle console log (artifacts/training_log_reconstructed.csv; the run's training_log.csv was lost); accuracy was not logged for that run. "
-             "ResNet-50 values from its training_log.csv.\nEfficientNet-B0 and the label-smoothing run have no surviving per-epoch log and are not shown. Training loss is computed on augmented images with class weights; "
+             "ResNet-50 values from its training_log.csv.\nEfficientNet-B0 and the label-smoothing run are not shown (their per-epoch values survive only in console logs, not parsed here). Training loss is computed on augmented images with class weights; "
              "validation = patient-disjoint split (n=5,560 after exclusion). Test data never used.", fontsize=7, color=INK2)
     for _, r in b3.iterrows():
         rows.append({"model": "EfficientNet-B3", "epoch": r.global_epoch, "train_loss": r.train_loss, "val_loss": r.val_loss, "val_auc": r.val_auc})

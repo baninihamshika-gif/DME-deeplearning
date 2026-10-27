@@ -28,6 +28,10 @@ To detect diabetic macular edema (DME) versus normal retina from single 2D OCT B
 
 Source: the Kermany et al. 2018 OCT2017 release (83,484 training images), DME and NORMAL classes only (`research_outputs/tables/table1_dataset_setup.md`).
 
+Per the paper's STAR Methods (verified from the published text) **[E]**: Spectralis OCT (Heidelberg Engineering); retrospective adult cohorts from five centres (Shiley Eye Institute UCSD, California Retinal Research Foundation, Medical Center Ophthalmology Associates, Shanghai First People's Hospital, Beijing Tongren Eye Center), July 2013 – March 2017; one horizontal foveal B-scan per exported image. Labels started from the patient's most recent EMR diagnosis and passed a three-tier grading: students (quality control, artifact exclusion), four ophthalmologists (independent grading), and two senior retinal specialists (final verification).
+
+Two differences from the released data matter here. The paper describes 108,312 training images and a 1,000-image test set (250 per class), whereas this project's release has 83,484 training images and 242 test images per class. The paper does not describe the released test set's selection, which is consistent with the test-set differences found in §7.3.
+
 - `train/`: 11,348 DME + 26,315 Normal images. Training and validation use a **patient-grouped** StratifiedGroupKFold (5 folds, seed 42, one fold held out for validation). Patient = the ID in the filename; eye and volume identity are not available.
 - The official `test/` split (242 DME + 242 Normal; 368 patients) shares **305 patients** with `train/`. The project removed every `train/` image of those patients (7,503 images) before training, leaving a training pool of 30,160 images (Kaggle runs: 24,600 train / 5,560 validation).
 - After exclusion: test↔training patient overlap 0 and exact duplicates 0 **[R]** (`leakage_summary.json`).
@@ -222,7 +226,7 @@ No per-epoch logs survive for B0 or the label-smoothing run. Validation is the p
 - Patient is the finest grouping available; correlated B-scans from one eye or volume cannot be identified.
 - The original tuned thresholds and temperatures were not valid (§7.2). They have been refit on the rebuilt training-time split; the refit depends on reproducing the scikit-learn 1.4.2 partition, which was confirmed by exact count matching rather than a saved manifest.
 - Per-image outputs were not saved originally; the reconstructed outputs come from a different software stack (agreement with every stored aggregate was confirmed).
-- The B0 training log is empty, so its exclusion of test patients is verified from code only. The B3 per-epoch log is a console reconstruction without accuracy.
+- The audited B0 run folder's log is empty; its exclusion of test patients is verified through an identical-weights run whose log survives (`20260920T095427Z`). The B3 per-epoch log is a console reconstruction without accuracy.
 - Labels come from the public dataset folders. Kermany "DME" vs "NORMAL" is a different label definition from clinically graded DME in diabetic cohorts, and negatives exclude other pathology.
 - Segmentation is non-functional, and its ground-truth handling of ungraded pixels is flawed.
 - The single B-scan design cannot assess centre involvement.
@@ -286,7 +290,7 @@ python research_outputs/scripts/12_refit_calibration_threshold.py
 | Existing results [E] | `metrics.json` aggregates; Grad-CAM randomisation check; training logs; segmentation log values |
 | Independently reconstructed [R] | all test-set confusion matrices and metrics, AUROC, calibration metrics; segmentation Dice/IoU; split counts |
 | New analyses [N] | CIs and paired tests; duplicate and patient-overlap scan; dimension and border-artifact analyses; validation-split mismatch diagnosis and measured contamination (84.3%); training-time split rebuild and threshold/temperature refit; supplementary unseen-pool evaluation; segmentation failure-mode analysis; literature extraction |
-| Unverified [U] | B0 test-patient exclusion (log empty); Zhu 2025 supplementary per-device results; Kermany device/acquisition details (from prior knowledge) |
+| Unverified [U] | Zhu 2025 supplementary per-device results |
 
 ## 18. Recommended future experiments
 

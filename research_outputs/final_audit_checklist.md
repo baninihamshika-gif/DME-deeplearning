@@ -30,7 +30,7 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 | Setup | Isolated branch/directory; user work preserved | **PASS** | Branch `research-audit` from clean `main`; outputs in new directories only |
 | A | Repository inventory with conflicts | **PASS** | `research_audit/repository_inventory.md` (8 conflicts documented) |
 | B1 | Implementation established from source | **PASS** | `metric_verification.md` B1 |
-| B1 | Patient-level split independence | **PASS** for B3, ResNet-50, A5 · **NOT VERIFIABLE** for B0 | B0 run log is 0 bytes; exclusion implied by `kaggle/entry.py` only |
+| B1 | Patient-level split independence | **PASS** (all four models) | B0: audited weights bitwise identical to run `20260920T095427Z`, whose log records the exclusion (`metric_verification.md` B1) |
 | B1 | Threshold/calibration fitted without test data | **PASS** (test not used). Original fit used a contaminated validation set (84.3% training images) and is superseded; **refit** on the rebuilt training-time validation split (n = 5,560, counts match the Kaggle log exactly) | `leakage_audit.md` §5, §5.1; `refit_calibration_threshold.csv` |
 | B2 | Metrics reconstructed with CIs | **PASS** | Table 2 |
 | B2 | Undefined metrics handled explicitly | **PASS** | NaN logic in `04_compute_metrics.py`; none occurred |
@@ -48,7 +48,7 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 | E | Figure 1 (within-project) | **PASS** | 3 genuinely evaluated models, full 0–1 axis |
 | E | Figure 2 (ROC) | **PASS** | Raw probabilities stated; no literature curves overlaid |
 | E | Figure 3 (literature) | **PASS** | Grouped by category, explicit non-comparability caption, plus Table 3 |
-| E | Figure 4 (learning curves) | **PASS** (B3, ResNet-50) · **NOT VERIFIABLE** (B0, A5: logs missing) | No epochs invented |
+| E | Figure 4 (learning curves) | **PASS** (B3, ResNet-50) · **NOT PLOTTED** (B0, A5) | No epochs invented. B0 and A5 per-epoch console logs exist (`20260920T095427Z`, `20260922T160023Z`) but are not plotted |
 | E | Figure 5 (reliability) | **PASS** | Fixed 10-bin scheme, counts shown |
 | E | Figure 6 (segmentation performance) | **NOT APPLICABLE** | Replaced by Audit Figure A1 because the evaluation is invalid |
 | E | 300-dpi PNG + vector PDF | **PASS** | Check 11 (dpi ≥ 300) |
@@ -71,7 +71,7 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 
 1. ~~Tuned thresholds and temperatures are invalid~~ **Resolved:** refit on the rebuilt training-time validation split (scripts 11–12). Residual caveat: on the easier test set the refit operating points give perfect or near-perfect counts, and refit scaling worsens test ECE for B3 and B0; validation specificity at 97% sensitivity (0.956–0.982) is the more realistic figure.
 2. **No external validation**, and the official test set appears unrepresentative (easier). The unseen-pool estimate (AUROC 0.996–0.997, accuracy 97.1–97.5%) is the more conservative internal figure.
-3. **B0 test-patient exclusion** cannot be confirmed from a log.
+3. ~~B0 test-patient exclusion cannot be confirmed from a log~~ **Resolved:** verified via run `20260920T095427Z` (bitwise-identical weights; exclusion logged).
 4. **The segmentation model is non-functional**, and its ground-truth handling of ungraded pixels is flawed.
 5. **Zhu 2025 online supplementary tables** were not retrieved (HTTP 403).
-6. **Kermany device and grading details** are cited from prior knowledge and were not re-verified.
+6. ~~Kermany device and grading details from prior knowledge~~ **Resolved:** verified against the published STAR Methods (archived Cell full text): Spectralis OCT; five centres; July 2013 – March 2017; three-tier grading (students → four ophthalmologists → two senior retinal specialists).

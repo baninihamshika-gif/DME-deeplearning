@@ -3,9 +3,9 @@ Phase B3 (supplementary, NEW analysis) -- score the existing checkpoints on the
 7,503 train/ images whose patients also appear in the official test set.
 
 build_splits() removes every image of those 305 patients from BOTH train and
-validation before training (logged for B3, ResNet-50 and the A5 run; the B0
-run's log is empty, so for B0 this is implied by kaggle/entry.py's code path
-but not verified from a log). These images were therefore never used to fit or
+validation before training (logged for all four models; B0's own run log is
+empty, but its weights are bitwise identical to run 20260920T095427Z, whose
+log records the exclusion). These images were therefore never used to fit or
 select any of those models, which makes them a second, ~15x larger unseen
 internal set. They are NOT independent of the official test set (same
 patients; 114 are byte-identical copies of test images), so they are reported

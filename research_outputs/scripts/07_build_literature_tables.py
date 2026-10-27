@@ -105,7 +105,7 @@ for _, r in perf[perf.threshold == 0.5].iterrows():
         continue
     lit.loc[len(lit)] = row(study="This project (DME-deeplearning), reconstructed 2026-10-27", source_location=r.prediction_source, model=r.model + " (ImageNet-pretrained, fine-tuned)",
                             input_representation="single 2D B-scan (300x300 letterbox)", task="DME vs Normal (Kermany folder labels; CNV/DRUSEN excluded)", positive_class="DME",
-                            device="Heidelberg Spectralis per Kermany et al. 2018 (from prior knowledge, not re-verified in this audit; not recorded per image)", dataset="Kermany OCT2017 official test split",
+                            device="Heidelberg Spectralis (Kermany et al. 2018, STAR Methods, verified from the published text; not recorded per image)", dataset="Kermany OCT2017 official test split",
                             cohort_role="internal held-out test (same source as training; patient-disjoint after exclusion)", evaluation_unit="B-scan",
                             n_evaluated=f"{int(r.n)} B-scans ({int(r.n_dme)} DME / {int(r.n_normal)} Normal)", accuracy=r.accuracy, sensitivity=r.sensitivity,
                             specificity=r.specificity, f1=r.f1, auroc=r.auroc, auroc_ci_lo=r.auroc_ci_lo, auroc_ci_hi=r.auroc_ci_hi,

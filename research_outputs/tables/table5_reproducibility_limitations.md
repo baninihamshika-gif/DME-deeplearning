@@ -13,7 +13,7 @@
 | Calibration protocol | Single temperature, NLL fit (evaluate.fit_temperature). Original fit on the mismatched validation set (superseded); refit on the training-time validation split; test set never used for fitting |
 | Evaluation metrics | Confusion-matrix metrics (manual + sklearn cross-check), AUROC (sklearn + DeLong cross-check), PR-AUC, Brier, log loss, ECE (10 bins) |
 | Statistical methods | Wilson CIs; stratified / patient-cluster percentile bootstrap (B=2000); DeLong AUROC CI; exact McNemar + paired DeLong with Holm correction |
-| Missing data / predictions | No per-image predictions were saved originally (regenerated); B0 training log empty; B3 training_log.csv lost (console-parsed version used); training-time split manifest not saved |
+| Missing data / predictions | No per-image predictions were saved originally (regenerated); B0 run folder log empty (identical-weights run 20260920T095427Z has the full log); B3 training_log.csv lost (console-parsed version used); training-time split manifest not saved at training time (rebuilt by script 11) |
 | Leakage concerns and evidence | Train/val<->test patient overlap 0 after exclusion; 0 exact or visually confirmed near duplicates test<->pool; validation-set mismatch at evaluation time contaminates threshold/temperature; test set distribution differs from training (dimensions, border artifact) |
 | External validation | None. All results are internal to the Kermany dataset |
 | Deviation from original methodology (this audit) | No retraining. New: re-inference of saved checkpoints on test set and on the readable images of the 305 excluded patients (count in Table 1 / Table 2); leakage scans; statistics |

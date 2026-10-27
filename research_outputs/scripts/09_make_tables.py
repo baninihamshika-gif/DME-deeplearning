@@ -53,8 +53,8 @@ def main():
         return {"Dataset/source": src, "Subset": subset, "Images": n_override or (f"{len(d):,}" if d is not None else "NR"),
                 "Unique patients": f"{d.patient.nunique():,}" if d is not None else "NR", "Eyes / volumes": "NR (not encoded in Kermany filenames)",
                 "DME-positive": f"{int(d.label.sum()):,}" if d is not None else "NR", "DME-negative (Normal)": f"{int((d.label == 0).sum()):,}" if d is not None else "NR",
-                "Split": split, "Unit of splitting": unit, "Dimensionality": "2D B-scan", "OCT device": "Heidelberg Spectralis according to the dataset paper (prior knowledge, not re-verified in this audit; not recorded per image)",
-                "Label source": "Kermany et al. 2018 class folders (grading protocol not re-verified in this audit)", "Independent of training": indep, "Notes": notes}
+                "Split": split, "Unit of splitting": unit, "Dimensionality": "2D B-scan", "OCT device": "Heidelberg Spectralis (Kermany et al. 2018, STAR Methods, verified from the published text; not recorded per image)",
+                "Label source": "Kermany et al. 2018 class folders; three-tier grading (students, 4 ophthalmologists, 2 senior retinal specialists) per STAR Methods", "Independent of training": indep, "Notes": notes}
 
     t1 = [
         r1("Kermany OCT2017 (Cell 2018), DME+NORMAL", "train/ folder, training pool after exclusion", pool, "train + validation (StratifiedGroupKFold 5-fold, 1 fold val)", "patient",
@@ -138,7 +138,7 @@ def main():
         ("Calibration protocol", "Single temperature, NLL fit (evaluate.fit_temperature). Original fit on the mismatched validation set (superseded); refit on the training-time validation split; test set never used for fitting"),
         ("Evaluation metrics", "Confusion-matrix metrics (manual + sklearn cross-check), AUROC (sklearn + DeLong cross-check), PR-AUC, Brier, log loss, ECE (10 bins)"),
         ("Statistical methods", "Wilson CIs; stratified / patient-cluster percentile bootstrap (B=2000); DeLong AUROC CI; exact McNemar + paired DeLong with Holm correction"),
-        ("Missing data / predictions", "No per-image predictions were saved originally (regenerated); B0 training log empty; B3 training_log.csv lost (console-parsed version used); training-time split manifest not saved"),
+        ("Missing data / predictions", "No per-image predictions were saved originally (regenerated); B0 run folder log empty (identical-weights run 20260920T095427Z has the full log); B3 training_log.csv lost (console-parsed version used); training-time split manifest not saved at training time (rebuilt by script 11)"),
         ("Leakage concerns and evidence", "Train/val<->test patient overlap 0 after exclusion; 0 exact or visually confirmed near duplicates test<->pool; validation-set mismatch at evaluation time contaminates threshold/temperature; test set distribution differs from training (dimensions, border artifact)"),
         ("External validation", "None. All results are internal to the Kermany dataset"),
         ("Deviation from original methodology (this audit)", "No retraining. New: re-inference of saved checkpoints on test set and on the readable images of the 305 excluded patients (count in Table 1 / Table 2); leakage scans; statistics"),
