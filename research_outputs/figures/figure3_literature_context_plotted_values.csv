@@ -7,8 +7,10 @@ group,label,auroc,ci_lo,ci_hi
 "Tang et al. 2021 — 2D ResNet-18, B-scan level (category B)","SPECTRALIS · External 6 (Hong Kong, UCH) · external",0.899,0.893,0.905
 "Tang et al. 2021 — 2D ResNet-18, B-scan level (category B)",Triton · Primary · internal,0.937,0.931,0.942
 "Tang et al. 2021 — 2D ResNet-18, B-scan level (category B)","Triton · External 7 (China, JSIEC) · external",0.947,0.941,0.953
+"Li et al. 2019 — ResNet50 ensemble, B-scan level (category B)",SPECTRALIS · Shanghai · internal test · DME vs NORMAL,0.996,0.995,0.997
 Context only (category C) — volume-level evaluation,"Tang 2021 · CIRRUS HD-OCT · primary · 3D CNN, volume",0.937,0.92,0.954
 Context only (category C) — volume-level evaluation,Tang 2021 · SPECTRALIS OCT · primary · 2D CNN aggregated to volume,0.958,0.93,0.977
 Context only (category C) — volume-level evaluation,Tang 2021 · Triton OCT · primary · 2D CNN aggregated to volume,0.965,0.948,0.977
 Context only (category C) — volume-level evaluation,Zhu 2025 · 3D CNN · hold-out test,0.99,0.983,0.996
 Context only (category C) — volume-level evaluation,Zhu 2025 · 3D CNN · external validation (total),0.916,0.902,0.93
+Context only (category C) — volume-level evaluation,Rodríguez-Miguel 2024 · CNN-RNN (model 2) · screening cohort,0.94,0.91,0.97

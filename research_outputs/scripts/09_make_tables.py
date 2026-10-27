@@ -109,6 +109,8 @@ def main():
     t3 = []
     for _, r in lit.iterrows():
         c = "A" if r.study.startswith("This project") else next((v for k, v in cat.items() if r.source_location.startswith(k)), "C")
+        if r.comparability_category not in ("NR", "nan"):
+            c = r.comparability_category
         if r.study.startswith("Zhu") and r.task.startswith("non-CI-DME"):
             c = "D"
         f = lambda x: x if x in ("NR", "NA") else f"{float(x):.3f}"
@@ -117,8 +119,8 @@ def main():
                    "Specificity": f(r.specificity), "F1": f(r.f1), "AUROC (95% CI)": f"{f(r.auroc)} ({f(r.auroc_ci_lo)}–{f(r.auroc_ci_hi)})" if r.auroc_ci_lo not in ("NR", "nan") else f(r.auroc),
                    "Metric source": r.source_location, "Comparability category": c, "Limitations / notes": r.notes})
     write(pd.DataFrame(t3), "table3_literature_comparison", "Table 3. Reported performance of published DME classifiers and the present model (not a head-to-head comparison)",
-          "A = within-project; B = similar task and unit (2D B-scan) but different dataset/population/label definition; C = different evaluation unit or input (volume-level/3D); D = different task, not plotted. "
-          "Published values copied as printed (two internally inconsistent CIs in Tang 2021 flagged in notes). NR = not reported. This project's AUROC CI is degenerate (perfect separation).")
+          "A = within-project; B = similar task and unit (2D B-scan) but different dataset/population/label definition; C = different evaluation unit or input (volume-level/3D); D = different task or modality, not plotted. "
+          "Published values copied as printed; internally inconsistent values (Tang 2021, Rodríguez-Miguel 2024, Li 2019, Singh & Gorantla 2020) are flagged in the notes column. NR = not reported. This project's AUROC CI is degenerate (perfect separation).")
 
     (TAB / "table4_segmentation_NOT_PRODUCED.md").write_text(
         "**Table 4 (segmentation) was not produced.**\n\nThe U-Net checkpoint labels ~99.99% of every frame as fluid (research_outputs/data/segmentation_summary.json). "

@@ -8,13 +8,13 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 | # | Requirement | Status | How it was checked |
 |---|---|---|---|
 | 1 | All reported metrics verified against underlying outputs | **PASS** | 80/80 values in `metrics.json` reproduced from re-inferred per-image predictions (`reconstructed_vs_reported.csv`). Original per-image outputs never existed; predictions were regenerated from the unmodified checkpoints. |
-| 2 | Plotted values match the CSV data | **PASS** | Check 2: Figures 1, 2, 3 and 5 plotted-value CSVs diffed against the source CSVs, 0 mismatches. Figure 4 plots the training-log CSVs directly. |
+| 2 | Plotted values match the CSV data | **PASS** | Check 2: Figures 1, 2, 3 and 5 plotted-value CSVs diffed against the source CSVs, 0 mismatches. Figure 4 plots the training-log CSVs and parsed console logs directly. |
 | 3 | Table values match figures and evaluation report | **PASS** | Check 3: Table 2 Markdown parsed back and compared with `table2_within_project_performance.csv`, 0 mismatches. Report §5 values were hand-compared with Table 2. |
 | 4 | CIs use the stated methods | **PASS** | Check 4: Wilson CIs recomputed with SciPy. DeLong recomputed with an independent brute-force implementation (degenerate cases confirmed; a non-degenerate case confirmed on 3,000 pool images). The bootstrap uses a fixed seed (42, B = 2,000). |
 | 5 | Positive-class definitions | **PASS** | Check 5: label 1 ⇔ `DME-` filename for all rows. `CLASS_NAMES` index 1 = DME (asserted at train time). |
 | 6 | Duplicate images and patient overlap | **PASS** | Check 6: MD5 test↔pool 0, within test 0; patient overlap 0. 5 dHash candidates (exact hex hashes; earlier lossy count of 10 corrected) were inspected visually and are visibly different scans. Eye-level overlap is **NOT VERIFIABLE** (no eye IDs). |
 | 7 | ROC curves use continuous scores | **PASS** | Check 7: 396–484 unique probabilities per model. ROC is computed from `p_dme_raw`. |
-| 8 | Published values have traceable citations | **PASS** | Check 8: 22/22 literature rows carry a DOI and a table location. Values were transcribed from the PMC full texts and the figshare supplement. |
+| 8 | Published values have traceable citations | **PASS** | Check 8: 37/37 published literature rows carry a DOI and a table location. Values were transcribed from the PMC full texts, the figshare and BMJ supplements, and the article PDFs of Li 2019, Rodríguez-Miguel 2024 and Singh & Gorantla 2020 (inconsistencies flagged in notes). |
 | 9 | Captions free of misleading head-to-head claims | **PASS** | Check 9 (automated wording scan of the report, tables and figure source), plus a manual read of every caption. Figure 3 states "Not a head-to-head comparison". |
 | 10 | Every PNG/PDF reopened and readable | **PASS (PNG)** / **NOT VERIFIABLE (PDF visual)** | All 6 PNGs were opened and inspected visually; layout defects were fixed and re-inspected. All 6 PDFs pass a structural check (header and EOF). They were not rendered visually because no PDF rasteriser is installed; they come from the same Matplotlib figure objects as the PNGs. |
 | 11 | Project tests run | **PASS** | `python -m pytest tests/`: 249 passed. |
@@ -48,7 +48,7 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 | E | Figure 1 (within-project) | **PASS** | 3 genuinely evaluated models, full 0–1 axis |
 | E | Figure 2 (ROC) | **PASS** | Raw probabilities stated; no literature curves overlaid |
 | E | Figure 3 (literature) | **PASS** | Grouped by category, explicit non-comparability caption, plus Table 3 |
-| E | Figure 4 (learning curves) | **PASS** (B3, ResNet-50) · **NOT PLOTTED** (B0, A5) | No epochs invented. B0 and A5 per-epoch console logs exist (`20260920T095427Z`, `20260922T160023Z`) but are not plotted |
+| E | Figure 4 (learning curves) | **PASS** (all four models) | No epochs invented. B0 and A5 parsed from their console logs (`20260920T095427Z`, `20260922T160023Z`); selected epochs match `checkpoint_metadata.json` |
 | E | Figure 5 (reliability) | **PASS** | Fixed 10-bin scheme, counts shown |
 | E | Figure 6 (segmentation performance) | **NOT APPLICABLE** | Replaced by Audit Figure A1 because the evaluation is invalid |
 | E | 300-dpi PNG + vector PDF | **PASS** | Check 11 (dpi ≥ 300) |

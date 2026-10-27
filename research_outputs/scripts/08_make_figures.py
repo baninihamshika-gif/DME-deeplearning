@@ -13,6 +13,7 @@ Usage: python research_outputs/scripts/08_make_figures.py
 """
 
 import json
+import re
 from pathlib import Path
 
 import matplotlib
@@ -155,6 +156,10 @@ def figure3():
         dev = "SPECTRALIS" if "SPECTRALIS" in r.device else "Triton"
         items.append(("Tang et al. 2021 — 2D ResNet-18, B-scan level (category B)", f"{dev} · {r.dataset} · {'internal' if r.cohort_role.startswith('primary') else 'external'}",
                       float(r.auroc), float(r.auroc_ci_lo), float(r.auroc_ci_hi), True))
+    li = lit[lit.study.str.startswith("Li F 2019") & (lit.comparability_category == "B")]
+    for _, r in li.iterrows():
+        items.append(("Li et al. 2019 — ResNet50 ensemble, B-scan level (category B)", "SPECTRALIS · Shanghai · internal test · DME vs NORMAL",
+                      float(r.auroc), float(r.auroc_ci_lo), float(r.auroc_ci_hi), True))
     t2 = lit[lit.source_location.str.startswith("Main text Table 2") & (lit.dataset == "Primary")]
     for _, r in t2.iterrows():
         unit = "3D CNN, volume" if r.model.startswith("3D") else "2D CNN aggregated to volume"
@@ -163,8 +168,12 @@ def figure3():
     for _, r in z.iterrows():
         items.append(("Context only (category C) — volume-level evaluation", f"Zhu 2025 · 3D CNN · {'hold-out test' if r.dataset == 'Testing' else 'external validation (total)'}",
                       float(r.auroc), float(r.auroc_ci_lo), float(r.auroc_ci_hi), False))
+    rm = lit[lit.study.str.startswith("Rodríguez-Miguel 2024") & (lit.auroc != "NR")]
+    for _, r in rm.iterrows():
+        items.append(("Context only (category C) — volume-level evaluation", "Rodríguez-Miguel 2024 · CNN-RNN (model 2) · screening cohort",
+                      float(r.auroc), float(r.auroc_ci_lo), float(r.auroc_ci_hi), False))
 
-    fig, ax = plt.subplots(figsize=(9.5, 6.2))
+    fig, ax = plt.subplots(figsize=(9.5, 7.0))
     yy, ylab, rows, cur, groups = [], [], [], 0, []
     for g in dict.fromkeys(i[0] for i in items):
         groups.append((g, cur)); cur += 1
@@ -185,18 +194,35 @@ def figure3():
     fig.text(0.02, -0.02, "Not a head-to-head comparison: every row uses a different dataset, population, device, label definition and evaluation protocol. "
              "Tang 2021 'DME' includes retinal thickening and hard exudates in diabetic eyes;\nthis project's 'DME vs Normal' uses Kermany folder labels. "
              "Square markers = volume-level results (different evaluation unit; context only). The x-axis starts at 0.80 to resolve the published intervals; "
-             "no statistical test across studies was performed.\nVolume-level rows show primary datasets only; all external results (both papers) are listed in Table 3. "
+             "no statistical test across studies was performed.\nVolume-level rows show primary datasets only; all external results are listed in Table 3. Li 2019 CIs are printed values, narrower than binomial for its n (Table 3 notes); fundus-based DMENet is not plotted. "
              "This project's official-test AUROC has no meaningful CI (perfect separation).", fontsize=7, color=INK2)
     save(fig, "figure3_literature_context", pd.DataFrame(rows))
 
 
 # --------------------------------------------------------------------------- Figure 4
+EPOCH_RE = re.compile(r"\[[AB] epoch \d+/\d+ \| global (\d+)\] train_loss=([\d.]+) val_loss=([\d.]+) val_auc=([\d.]+)")
+
+
+def parse_console_log(path):
+    """Per-epoch values from a Kaggle run.log (JSON-lines console capture)."""
+    rows = {}
+    for line in path.read_text(encoding="utf8").splitlines():
+        m = EPOCH_RE.search(line)
+        if m:
+            g, tl, vl, va = m.groups()
+            rows[int(g)] = {"global_epoch": int(g), "train_loss": float(tl), "val_loss": float(vl), "val_auc": float(va)}
+    return pd.DataFrame(sorted(rows.values(), key=lambda r: r["global_epoch"]))
+
+
 def figure4():
     b3 = pd.read_csv(REPO / "artifacts" / "training_log_reconstructed.csv")
     rn = pd.read_csv(REPO / "artifacts" / "kaggle" / "20260920T110729Z" / "artifacts" / "training_log.csv")
+    b0 = parse_console_log(REPO / "artifacts" / "kaggle" / "20260920T095427Z" / "run.log")
+    ls = parse_console_log(REPO / "artifacts" / "kaggle" / "20260922T160023Z" / "run.log")
     meta = json.loads((DATA / "checkpoint_metadata.json").read_text())
-    fig, axes = plt.subplots(1, 3, figsize=(12, 3.8), gridspec_kw={"wspace": 0.32}); rows = []
-    ax = axes[0]
+    LS_COL = "#8a5cc2"
+    fig, axes = plt.subplots(2, 2, figsize=(12, 7.6), gridspec_kw={"wspace": 0.25, "hspace": 0.42}); rows = []
+    ax = axes[0, 0]
     ax.plot(b3.global_epoch, b3.train_loss, "-", color=C["EfficientNet-B3"], lw=2, marker="o", ms=3.5, label="Training loss")
     ax.plot(b3.global_epoch, b3.val_loss, "--", color=C["EfficientNet-B0"], lw=2, marker="s", ms=3.5, label="Validation loss")
     sel = meta["EfficientNet-B3"]["global_epoch"]
@@ -204,22 +230,35 @@ def figure4():
     ax.axvline(5.5, color=GRID, lw=3); ax.text(5.9, 0.55, "phase A → B\n(full unfreeze)", fontsize=7, color=INK2)
     ax.set(xlabel="Epoch", ylabel="Weighted cross-entropy loss"); ax.set_title("a  EfficientNet-B3 loss", loc="left")
     ax.legend(fontsize=7.5)
-    ax = axes[1]
-    ax.plot(b3.global_epoch, b3.val_auc, "-", color=C["EfficientNet-B3"], lw=2, marker="o", ms=3.5, label="EfficientNet-B3 validation AUROC")
-    ax.plot(rn.global_epoch, rn.val_auc, ":", color=C["ResNet-50"], lw=2, marker="^", ms=3.5, label="ResNet-50 validation AUROC")
+    ax = axes[0, 1]
+    ax.plot(b3.global_epoch, b3.val_auc, "-", color=C["EfficientNet-B3"], lw=2, marker="o", ms=3.5, label="EfficientNet-B3")
+    ax.plot(b0.global_epoch, b0.val_auc, "--", color=C["EfficientNet-B0"], lw=2, marker="s", ms=3.5, label="EfficientNet-B0")
+    ax.plot(rn.global_epoch, rn.val_auc, ":", color=C["ResNet-50"], lw=2, marker="^", ms=3.5, label="ResNet-50")
+    ax.plot(ls.global_epoch, ls.val_auc, "-.", color=LS_COL, lw=2, marker="D", ms=3, label="B3 + label smoothing 0.05")
     ax.set(xlabel="Epoch", ylabel="Validation AUROC", ylim=(0.85, 1.0)); ax.set_title("b  Validation AUROC (selection metric)", loc="left"); ax.legend(fontsize=7.5, loc="lower right")
-    ax = axes[2]
+    ax = axes[1, 0]
     ax.plot(rn.global_epoch, rn.train_loss, "-", color=C["EfficientNet-B3"], lw=2, marker="o", ms=3.5, label="Training loss")
     ax.plot(rn.global_epoch, rn.val_loss, "--", color=C["EfficientNet-B0"], lw=2, marker="s", ms=3.5, label="Validation loss")
     sel_r = meta["ResNet-50"]["global_epoch"]
     ax.axvline(sel_r, color=INK2, lw=1, ls=":"); ax.text(sel_r - 0.4, ax.get_ylim()[1] * 0.92, f"selected\nepoch {sel_r}", fontsize=7, color=INK2, ha="right")
     ax.set(xlabel="Epoch", ylabel="Weighted cross-entropy loss"); ax.set_title("c  ResNet-50 loss", loc="left"); ax.legend(fontsize=7.5)
-    fig.suptitle("Training and Validation Performance Across Training Epochs", fontsize=11, y=1.03)
-    fig.text(0.0, -0.08, "B3 per-epoch values were parsed from the Kaggle console log (artifacts/training_log_reconstructed.csv; the run's training_log.csv was lost); accuracy was not logged for that run. "
-             "ResNet-50 values from its training_log.csv.\nEfficientNet-B0 and the label-smoothing run are not shown (their per-epoch values survive only in console logs, not parsed here). Training loss is computed on augmented images with class weights; "
+    ax = axes[1, 1]
+    ax.plot(b0.global_epoch, b0.train_loss, "-", color=C["EfficientNet-B0"], lw=2, marker="s", ms=3.5, label="B0 training")
+    ax.plot(b0.global_epoch, b0.val_loss, "--", color=C["EfficientNet-B0"], lw=2, marker="s", ms=3.5, mfc="white", label="B0 validation")
+    ax.plot(ls.global_epoch, ls.train_loss, "-", color=LS_COL, lw=2, marker="D", ms=3, label="B3 + LS training")
+    ax.plot(ls.global_epoch, ls.val_loss, "--", color=LS_COL, lw=2, marker="D", ms=3, mfc="white", label="B3 + LS validation")
+    for key, col, dx, ha in (("EfficientNet-B0", C["EfficientNet-B0"], 0.3, "left"), ("EfficientNet-B3+LS0.05", LS_COL, -0.3, "right")):
+        e = meta[key]["global_epoch"]; ax.axvline(e, color=col, lw=1, ls=":")
+        ax.text(e + dx, ax.get_ylim()[1] * 0.92, f"selected\nepoch {e}", fontsize=7, color=col, ha=ha)
+    ax.set(xlabel="Epoch", ylabel="Loss (LS run: label-smoothed, not comparable)"); ax.set_title("d  EfficientNet-B0 and B3 + label-smoothing loss", loc="left"); ax.legend(fontsize=7.5)
+    fig.suptitle("Training and Validation Performance Across Training Epochs", fontsize=11, y=0.97)
+    fig.text(0.0, -0.01, "B3, B0 and label-smoothing (LS) per-epoch values were parsed from the Kaggle console logs (B3: artifacts/training_log_reconstructed.csv; B0: kaggle/20260920T095427Z/run.log; "
+             "LS: kaggle/20260922T160023Z/run.log); accuracy was not logged for those runs.\nResNet-50 values from its training_log.csv. Both early-stopped runs end before 30 epochs. "
+             "The LS loss includes the smoothing target, so its floor is higher and it is not on the same scale as the other losses. Training loss is computed on augmented images with class weights;\n"
              "validation = patient-disjoint split (n=5,560 after exclusion). Test data never used.", fontsize=7, color=INK2)
-    for _, r in b3.iterrows():
-        rows.append({"model": "EfficientNet-B3", "epoch": r.global_epoch, "train_loss": r.train_loss, "val_loss": r.val_loss, "val_auc": r.val_auc})
+    for name, d in (("EfficientNet-B3", b3), ("EfficientNet-B0", b0), ("EfficientNet-B3+LS0.05", ls)):
+        for _, r in d.iterrows():
+            rows.append({"model": name, "epoch": r.global_epoch, "train_loss": r.train_loss, "val_loss": r.val_loss, "val_auc": r.val_auc})
     for _, r in rn.iterrows():
         rows.append({"model": "ResNet-50", "epoch": r.global_epoch, "train_loss": r.train_loss, "val_loss": r.val_loss, "val_auc": r.val_auc, "train_accuracy": r.train_accuracy, "val_accuracy": r.val_accuracy})
     save(fig, "figure4_learning_curves", pd.DataFrame(rows))

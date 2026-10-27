@@ -48,6 +48,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 import config
 from utils import PreprocessCache, build_splits, load_class_folder_df, set_seed
@@ -510,6 +511,21 @@ def main():
     }
     if tta_metrics is not None:
         metrics_payload["tta_ablation"] = tta_metrics
+
+    # Per-image predictions, so every metric above can be recomputed without rerunning inference.
+    pred_frames = []
+    for split_name, df_, logits_, labels_, raw_, cal_ in (
+        ("val", val_df, val_logits, val_labels, val_probs_raw, val_probs_calibrated),
+        ("test", test_df, test_logits, test_labels, test_probs_raw, test_probs_calibrated),
+    ):
+        pred_frames.append(pd.DataFrame({
+            "split": split_name, "path": df_["path"].astype(str).values, "patient": df_["patient"].values,
+            "label": labels_, "logit_0": logits_[:, 0], "logit_1": logits_[:, 1],
+            "prob_dme_raw": raw_, "prob_dme_calibrated": cal_,
+        }))
+    predictions_path = output_dir / "predictions.csv"
+    pd.concat(pred_frames, ignore_index=True).to_csv(predictions_path, index=False)
+    print(f"[evaluate] wrote {predictions_path}")
 
     metrics_path = output_dir / "metrics.json"
     with open(metrics_path, "w") as f:

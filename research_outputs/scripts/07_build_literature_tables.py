@@ -13,8 +13,14 @@ on 2026-10-27 and carries its exact table location. Sources read:
     supplement bmjopen-15-5-s001.docx (supplied by the user): Supplementary
     Table 1 confusion matrices (every published metric recomputes from them),
     Table 2 per-device results, Table 3 human-system comparison.
-Published values are copied as printed, including two internally inconsistent
-CIs in Tang 2021 (flagged in the notes column, not corrected).
+  Singh & Gorantla 2020 (PLoS ONE 15(2):e0220677), Rodríguez-Miguel et al. 2024
+    (Sci Rep 14:17633) and Li F et al. 2019 (Biomed Opt Express 10(12):6204):
+    article PDFs supplied by the user, read 2026-10-28 (text via pdfplumber;
+    DMENet Fig 6A read from the rendered page).
+Published values are copied as printed, including internally inconsistent
+values (two CIs in Tang 2021; others in the three 2019-2024 papers), which are
+flagged in the notes column, not corrected. comparability_category is set
+explicitly for the later papers; Tang/Zhu rows are categorised in script 09.
 "NR" = not reported; "NA" = not applicable.
 
 This project's own rows are read from research_outputs/data/ (never typed in).
@@ -35,7 +41,7 @@ Z25 = "Zhu 2025, BMJ Open, doi:10.1136/bmjopen-2025-099167"
 
 COLS = ["study", "source_location", "model", "input_representation", "task", "positive_class", "device", "dataset", "cohort_role",
         "evaluation_unit", "n_evaluated", "accuracy", "sensitivity", "specificity", "f1", "auroc", "auroc_ci_lo", "auroc_ci_hi",
-        "sensitivity_ci", "specificity_ci", "accuracy_ci", "notes"]
+        "sensitivity_ci", "specificity_ci", "accuracy_ci", "notes", "comparability_category"]
 
 
 def row(**k):
@@ -120,6 +126,90 @@ for src, task, ds, dev, role, cmx, ac, f1, se, sp, a, lo, hi, note in zs:
                  sensitivity_ci="NR", specificity_ci="NR", accuracy_ci="NR",
                  notes=("Metrics recompute from the printed counts. " + note).strip()))
 
+# ---------------- Singh & Gorantla 2020 (PLoS ONE 15(2):e0220677), article PDF supplied by the user.
+# Colour FUNDUS photographs (IDRiD + MESSIDOR), DME = hard exudates: different modality, category D.
+S20 = "Singh & Gorantla 2020, PLoS ONE, doi:10.1371/journal.pone.0220677"
+SNOTE = ("Colour fundus photographs, not OCT; DME graded from hard exudates near the macula (IDRiD/MESSIDOR grades 0-2). "
+         "5-fold cross-validation at image level on augmented data; patient grouping not described. Different modality and label definition: not comparable.")
+s20 = [  # source, dataset, n, acc, sens, spec, f1, auroc, note
+    ("Table 3 and Fig 6A (Gamma Ensemble, stage 1)", "IDRiD + MESSIDOR pooled", "360 test images", 0.9667, 0.9750, 0.9563, 0.9701, 0.9654,
+     "Fig 6A (row-normalised) shows No-DME correct 0.9653 and DME correct 0.9684, i.e. sensitivity 0.968 / specificity 0.965, not Table 3's 0.975 / 0.956. "
+     "Counts consistent with both (inferred, not printed): TN 195, FP 7, FN 5, TP 153; Table 3's sensitivity, specificity and precision then equal NPV, PPV and specificity, "
+     "and its F1 0.9701 equals the No-DME class F1 (DME-class F1 0.962). Copied as printed."),
+    ("Table 4 / abstract (HE-CNN, both stages mapped to 3 grades)", "IDRiD + MESSIDOR, averaged", "NR", 0.9612, 0.9632, 0.9584, 0.9609, "NR",
+     "Headline abstract figures; 3-grade result averaged over two datasets, not DME presence."),
+    ("Table 5 (DMENet on MESSIDOR)", "MESSIDOR", "NR", 0.9547, 0.9468, 0.9719, "NR", "NR", ""),
+    ("Table 6 (DMENet on IDRiD)", "IDRiD", "NR", 0.9676, 0.9788, 0.9449, "NR", "NR", ""),
+]
+for src, ds, n, ac, se, sp, f1, a, note in s20:
+    L.append(row(study=S20, source_location=src, model="Hierarchical Ensemble of CNNs (ResNet/DenseNet/SE-ResNet/SqueezeNet learners with gating CNNs)",
+                 input_representation="colour fundus photograph", task="DME (hard exudates) presence, then grade 1 vs 2", positive_class="DME (fundus grade 1-2)",
+                 device="Kowa VX-10 alpha (IDRiD); Topcon TRC NW6 (MESSIDOR)", dataset=ds, cohort_role="5-fold cross-validation (image level)",
+                 evaluation_unit="fundus image", n_evaluated=n, accuracy=ac, sensitivity=se, specificity=sp, f1=f1, auroc=a, auroc_ci_lo="NR", auroc_ci_hi="NR",
+                 notes=(SNOTE + " " + note).strip(), comparability_category="D"))
+
+# ---------------- Rodríguez-Miguel et al. 2024 (Sci Rep 14:17633), article PDF supplied by the user.
+# Supplementary Material 1 (ground-truth test-set metrics) was not obtained: NR.
+R24 = "Rodríguez-Miguel 2024, Sci Rep, doi:10.1038/s41598-024-68489-2"
+RNOTE = ("Hybrid CNN-RNN on 22 automatically selected B-scans (12 foveal, every 2nd of slices 60-85; 10 parafoveal, every 10th) of a 128-slice Topcon cube; "
+         "CNN backbone pre-trained on Kermany OCT2017 (the dataset this project trains on). Models were trained on a separate 650-cube ground-truth set "
+         "(433/100/117 train/val/test, subject-disjoint); its test metrics are in Supplementary Material 1 (not obtained). "
+         "Evaluation cohort: retrospective real-world DR screening, 5,314 cubes from 4,408 subjects, prevalence 2.37%; reference = screening retina specialist "
+         "(thickening >= 300 um plus anatomical signs). Thresholds were tuned over 1,000 values on this same cohort (Youden / highest sensitivity / highest specificity), "
+         "so operating points are optimistic. Repeat screens of the same subject are included; the binomial CIs treat cubes as independent.")
+r24 = [  # model, threshold label, sens, sens_ci, spec, spec_ci, auroc, lo, hi, n, note
+    ("Model 2", "threshold 1 (Youden)", 0.905, "84.0-95.0", 0.908, "90.0-91.6", 0.94, 0.91, 0.97, "5314 cubes (126 DME / 5188 non-DME)", ""),
+    ("Ensemble (mode vote of models 1-3)", "threshold 1 (Youden)", 0.889, "82.1-93.8", 0.933, "92.6-94.0", "NR", "NR", "NR", "5314 cubes (126 DME / 5188 non-DME)", ""),
+    ("Ensemble (mode vote of models 1-3)", "threshold 2 (highest sensitivity)", 0.921, "82.1-93.8", 0.831, "82.1-84.1", "NR", "NR", "NR", "5314 cubes (126 DME / 5188 non-DME)",
+     "All four threshold-2 rows print the same sensitivity CI (82.1-93.8), identical to the threshold-1 ensemble CI; for 116/126 (92.1%) the exact CI is 85.9-96.1 and the "
+     "printed upper bound is barely above the point estimate. Likely a copy error; copied as printed."),
+    ("Ensemble (mode vote of models 1-3)", "threshold 3 (highest specificity)", 0.810, "73.0-87.4", 0.970, "96.5-97.4", "NR", "NR", "NR",
+     "5314 cubes (TN 5032, FP 156, FN 24, TP 102)",
+     "FN 24 and FP 156 are printed in the Results; sensitivity, specificity and PPV 39.5% recompute from them. The false-negative review says 'just 4 DMEs (12.1%)' were missed: "
+     "4/24 = 16.7%, while 12.1% = 4/33, so the denominator does not match the 24 false negatives."),
+]
+for model, thr, se, seci, sp, spci, a, lo, hi, n, note in r24:
+    L.append(row(study=R24, source_location="Table 2 and Results text" + (" (AUROC: Results, Fig 1)" if a != "NR" else ""),
+                 model=f"Hybrid CNN-RNN (22 parallel custom CNNs + bidirectional RNN), {model}, {thr}", input_representation="22-B-scan subset of a 3D OCT cube",
+                 task="DME vs non-DME in diabetic screening attendees", positive_class="DME (retina specialist, screening programme)",
+                 device="Topcon 3D OCT-Maestro 1", dataset="Real-world DR screening cohort (Madrid), Nov 2015 - Mar 2019",
+                 cohort_role="retrospective screening cohort (separate from the training set; same programme, thresholds tuned on it)", evaluation_unit="OCT cube (screening visit)",
+                 n_evaluated=n, accuracy="NR", sensitivity=se, specificity=sp, f1="NR", auroc=a, auroc_ci_lo=lo, auroc_ci_hi=hi,
+                 sensitivity_ci=seci, specificity_ci=spci, accuracy_ci="NR", notes=(RNOTE + " " + note).strip(), comparability_category="C"))
+
+# ---------------- Li F et al. 2019 (Biomed Opt Express 10(12):6204-6226), article PDF supplied by the user.
+L19 = "Li F 2019, Biomed Opt Express, doi:10.1364/BOE.10.006204"
+LMODEL = "Ensemble of four improved (dilated) ResNet50, ImageNet-pretrained"
+LNOTE = ("Proprietary retrospective set (Shanghai Zhongshan + First People's hospitals, 2014-2019): 15,573 Spectralis B-scans from 2,796 patients after exclusions; "
+         "test set 267 patients / 1,536 B-scans (395 CNV, 332 DME, 174 DRUSEN, 635 NORMAL), patient-disjoint from 10-fold training/validation. "
+         "Labels by 5 junior + 3 senior ophthalmologists with adjudication. The paper defines sensitivity and specificity as correct abnormal / correct normal "
+         "'divided by the total number of test images' (as printed). CI method not stated.")
+l19 = [  # source, task, positive, dataset, role, unit, n, acc, accci, se, seci, sp, spci, a, lo, hi, cat, note
+    ("Table 6 (3 ensembling binary classifiers, DME vs NORMAL)", "DME vs NORMAL (binary)", "DME", "Shanghai hospitals, independent test patients",
+     "internal held-out test (patient-disjoint)", "B-scan", "NR (test set holds 332 DME / 635 NORMAL B-scans)", 0.988, "0.987-0.989", 0.986, "0.984-0.988", 0.991, "0.990-0.992",
+     0.996, 0.995, 0.997, "B",
+     "Closest published analogue of this project (single Spectralis B-scan, DME vs normal, patient-disjoint test). Inconsistencies: 0.986 is not k/332 (327/332 = 0.985, 328/332 = 0.988); "
+     "the CIs are about 5x narrower than binomial for n = 332 / 635 (Wilson 0.965-0.994 for 327/332), so they cannot be per-image test-set CIs."),
+    ("Table 3 (4-class model, abnormal vs normal)", "Any of CNV/DME/DRUSEN vs NORMAL (from a 4-class model)", "abnormal (CNV, DME or DRUSEN)", "Shanghai hospitals, independent test patients",
+     "internal held-out test (patient-disjoint)", "B-scan", "1536 B-scans (901 abnormal / 635 NORMAL)", 0.973, "0.971-0.975", 0.963, "0.960-0.966", 0.985, "0.983-0.987",
+     0.995, 0.994, 0.996, "D",
+     "Wilson CI for 0.973 at n = 1536 is 0.964-0.980, wider than printed. A separate 'best model' (Table 4: acc 0.979, sens 0.968, spec 0.994, AUROC 0.998) was chosen as the best of 10 folds on the test set itself, so it is optimistically selected."),
+    ("Table 8 (UCSD dataset, 'with pre-trained weights' row, DME class)", "DME one-vs-rest within CNV/DME/DRUSEN/NORMAL", "DME", "UCSD = Kermany OCT2017 (84,484 B-scans, 4,686 patients)",
+     "6 sequential splits: train on 1/6, test on 5/6; mean +/- SD", "B-scan", "NR (5/6 of 84,484 per run)", 0.971, "SD 0.002", 0.901, "SD 0.012", 0.982, "SD 0.004", 0.978, "NR", "NR", "D",
+     "Same source dataset as this project, but a 4-class one-vs-rest task (negatives include CNV and DRUSEN) and a different split; whether splits are patient-disjoint is not stated. "
+     "Values printed in percent with SD over six runs (precision 94.3)."),
+    ("Table 7 (DHU = Duke Srinivasan 2014, leave-three-out CV)", "AMD / DME / NORMAL (3-class), volume = mode of B-scan predictions", "DME", "Duke Srinivasan 2014 (15 AMD, 15 DME, 15 NORMAL volumes)",
+     "45-fold leave-three-out cross-validation, fine-tuned on the other 42 volumes", "OCT volume", "30 volumes (15 DME / 15 NORMAL; AMD excluded here)", "NR", "NR", 1.0, "NR", 1.0, "NR",
+     "NR", "NR", "NR", "C",
+     "DME 15/15 and NORMAL 15/15 volumes correctly classified with weights pre-trained on the authors' data (14/15 NORMAL without them). 'Specificity' here = NORMAL volumes classified NORMAL in a 3-class task. "
+     "Same 30 volumes as this project's Duke 2014 external set (report section 7.4), but fine-tuned on Duke by cross-validation, whereas this project applied its models without any Duke training."),
+]
+for src, task, pos, ds, role, unit, n, ac, acci, se, seci, sp, spci, a, lo, hi, cat, note in l19:
+    L.append(row(study=L19, source_location=src, model=LMODEL, input_representation="single 2D B-scan (224x224)" if unit == "B-scan" else "2D B-scans aggregated to volume (mode)",
+                 task=task, positive_class=pos, device="Heidelberg Spectralis", dataset=ds, cohort_role=role, evaluation_unit=unit, n_evaluated=n,
+                 accuracy=ac, sensitivity=se, specificity=sp, f1="NR", auroc=a, auroc_ci_lo=lo, auroc_ci_hi=hi, sensitivity_ci=seci, specificity_ci=spci, accuracy_ci=acci,
+                 notes=((LNOTE + " ") if ds.startswith("Shanghai") else "") + note, comparability_category=cat))
+
 lit = pd.DataFrame(L)
 
 # ---------------- This project (read from reconstructed outputs)
@@ -160,6 +250,22 @@ CM = [
     dict(candidate="Tang 2021 CI-DME vs non-CI-DME (all levels)", input="volume / B-scan", task="centre involvement / not addressed by this project", population="different",
          device="different", unit="various", test_construction="-", validation="-", balance="-", selection="-",
          metric_scale="-", uncertainty="published", comparable="no", category="D", plot="text only"),
+    dict(candidate="Li F 2019 ResNet50 ensemble, DME vs NORMAL binary (Table 6)", input="2D B-scan / same", task="DME vs NORMAL, ophthalmologist-graded / similar", population="Shanghai hospital patients / different",
+         device="Heidelberg Spectralis / same vendor as Kermany", unit="B-scan / same", test_construction="267 test patients, patient-disjoint", validation="internal / same type",
+         balance="332 DME / 635 NORMAL vs 242/242 here", selection="NR for the binary models; the 4-class 'best model' was picked on the test set",
+         metric_scale="0-1", uncertainty="CIs published but too narrow for the stated n", comparable="partially (closest published analogue)", category="B", plot="Table 3 and Figure 3 (B-scan level, labelled cross-study)"),
+    dict(candidate="Li F 2019 on UCSD/Kermany (Table 8) and on Duke 2014 (Table 7)", input="2D B-scan; volume by mode rule", task="4-class one-vs-rest (UCSD); 3-class volume (Duke) / different",
+         population="Kermany OCT2017 (same source) and Duke 2014 (same set as this project's external Duke 2014)", device="Spectralis / same", unit="B-scan; volume",
+         test_construction="train 1/6, test 5/6 (UCSD); leave-three-out CV fine-tuned on Duke", validation="internal resampling only", balance="different", selection="NR",
+         metric_scale="% with SD; volume fractions", uncertainty="SD over runs; none for Duke", comparable="no (task and training protocol differ)", category="C/D", plot="Table 3 only"),
+    dict(candidate="Rodríguez-Miguel 2024 CNN-RNN on 22-slice cubes (Table 2)", input="22 B-scans of a 3D cube / different", task="DME vs non-DME in unselected screening attendees / different population and prevalence (2.4%)",
+         population="Madrid DR screening programme / different", device="Topcon 3D OCT-Maestro 1 / different", unit="OCT cube / different",
+         test_construction="whole screening cohort, separate from the 650-cube training set", validation="temporal/real-world cohort, same programme", balance="126 / 5188",
+         selection="thresholds tuned on the evaluation cohort", metric_scale="%", uncertainty="binomial CIs (one copied interval flagged)", comparable="no (unit, device and spectrum differ)", category="C",
+         plot="Table 3; Figure 3 contextual panel (model 2 AUROC)"),
+    dict(candidate="Singh & Gorantla 2020 DMENet (fundus)", input="colour fundus photograph / different modality", task="hard-exudate DME grade / different definition", population="IDRiD + MESSIDOR / different",
+         device="fundus cameras / different", unit="fundus image", test_construction="5-fold CV on augmented images", validation="internal", balance="augmented to balance", selection="NR",
+         metric_scale="%", uncertainty="none", comparable="no", category="D", plot="Table 3 only, never on the same axis"),
     dict(candidate="This project's U-Net (Dice) vs any classification metric", input="-", task="segmentation vs classification", population="Duke vs Kermany",
          device="-", unit="pixel/image vs image", test_construction="-", validation="-", balance="-", selection="-", metric_scale="Dice vs accuracy", uncertainty="-",
          comparable="no", category="D", plot="never on the same axis"),

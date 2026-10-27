@@ -29,7 +29,7 @@
   },
   "8_literature_traceable": {
     "pass": true,
-    "detail": "25 published rows with table location and DOI"
+    "detail": "37 published rows with table location and DOI"
   },
   "9_no_head_to_head_claims": {
     "pass": true,

@@ -271,6 +271,23 @@ def run_epoch(model, loader, criterion, device, optimizer=None):
     return avg_loss, accuracy, auc
 
 
+def write_split_manifest(path: Path, train_df: pd.DataFrame, val_df: pd.DataFrame) -> None:
+    """
+    Record the exact train/val assignment (path, label, patient, split). The
+    split is recomputed by build_splits() on every run, and StratifiedGroupKFold's
+    fold assignment depends on the scikit-learn version, so the manifest is the
+    only durable record of which images the checkpoint was trained/selected on.
+    """
+    import sklearn
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    manifest = pd.concat([train_df.assign(split="train"), val_df.assign(split="val")], ignore_index=True)
+    manifest = manifest[["path", "label", "patient", "split"]].assign(path=lambda d: d["path"].astype(str))
+    manifest["sklearn_version"] = sklearn.__version__
+    manifest.to_csv(path, index=False)
+    print(f"[split] wrote {path} (train={len(train_df)} val={len(val_df)}, sklearn {sklearn.__version__})")
+
+
 def _log_epoch_row(log_path: Path, row: dict) -> None:
     write_header = not Path(log_path).exists()
     with open(log_path, "a", newline="") as f:
@@ -443,6 +460,7 @@ def main():
     # Never touches the test set (only used here for the C8 exclusion check inside build_splits).
     result = build_splits(args.train_dir, test_dir=args.test_dir)
     train_df, val_df = result.train_df, result.val_df
+    write_split_manifest(args.artifacts_dir / "split_manifest.csv", train_df, val_df)
 
     epochs_a, epochs_b = config.EPOCHS_PHASE_A, config.EPOCHS_PHASE_B
     if args.smoke:

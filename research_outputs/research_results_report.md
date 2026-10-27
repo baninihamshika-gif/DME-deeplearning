@@ -163,7 +163,7 @@ Frozen checkpoints, unchanged preprocessing, and thresholds fixed in advance: ra
 
 ## 8. Literature comparison
 
-Sources were read in full: Tang et al. 2021 (PMC full text plus figshare supplement) and Zhu et al. 2025 (PMC XML full text). Extraction: `research_audit/literature_extraction.csv`. Comparability: `research_audit/comparability_matrix.csv`. Table: `research_outputs/tables/table3_literature_comparison.md`.
+Sources were read in full: Tang et al. 2021 (PMC full text plus figshare supplement), Zhu et al. 2025 (PMC XML full text, article PDF and supplement), and the article PDFs of Li F et al. 2019, Rodríguez-Miguel et al. 2024 and Singh & Gorantla 2020. Extraction: `research_audit/literature_extraction.csv`. Comparability: `research_audit/comparability_matrix.csv`. Table: `research_outputs/tables/table3_literature_comparison.md`.
 
 **Tang et al. 2021, Diabetes Care 44(9):2078–2088 (primary reference).**
 
@@ -186,13 +186,46 @@ Sources were read in full: Tang et al. 2021 (PMC full text plus figshare supplem
   - **Readers (Supplementary Table 3).** On a 200-volume comparison set, the system has sensitivity 0.910 and specificity 0.937 (AUROC 0.971), while three retina experts have sensitivity 0.944–1.000 and specificity 0.658–0.928.
   - **Two printing errors, copied as printed and flagged.** The experts' average F1 is printed as 1.957 and 1.871, which is impossible; the counts give 0.887 for DME. Supplementary Table 4 is captioned as covering testing and external validation, but its totals (71 FP / 102 FN) equal Chaozhou alone.
 
+**Three further studies (article PDFs supplied by the user, read in full 2026-10-28) [E].** They were extracted the same way as Zhu 2025: design, device, unit, cohort role, n and metrics with table locations, NR where not reported, and every printed metric checked against counts where counts could be derived. All three are in `literature_extraction.csv` (12 rows) and Table 3.
+
+**Li F et al. 2019, Biomed Opt Express 10(12):6204 (category B for one row; the closest published analogue).**
+
+- Design: an ensemble of four dilated ResNet50s on single Heidelberg Spectralis B-scans from two Shanghai hospitals (15,573 graded B-scans, 2,796 patients). There is a patient-disjoint test set of 267 patients / 1,536 B-scans (332 DME, 635 NORMAL), and 10-fold patient-level cross-validation for training and validation.
+- **DME vs NORMAL binary classifier (Table 6):** accuracy 0.988, sensitivity 0.986, specificity 0.991, AUROC 0.996 (0.995–0.997), at B-scan level. This is the same input unit, device vendor and binary task as this project, but a different population and label process (ophthalmologist-graded, adjudicated). Its test prevalence is 34% rather than 50%.
+- **Internal inconsistencies, copied as printed and flagged:**
+  - 0.986 is not attainable as k/332 (327/332 = 0.985, 328/332 = 0.988).
+  - Every CI is about 5× narrower than a binomial interval for the stated test size (Wilson 0.965–0.994 for 327/332), so the CIs cannot be per-image test-set intervals. The method is not stated.
+  - The text defines sensitivity and specificity as correct counts "divided by the total number of test images".
+  - The 4-class "best model" (Table 4) was chosen as the best of 10 folds on the test set itself.
+- **Kermany/UCSD (Table 8):** DME one-vs-rest within a 4-class model gives accuracy 97.1%, sensitivity 90.1%, specificity 98.2% and AUROC 0.978, as mean ± SD over six runs that train on 1/6 and test on 5/6. This is the same source data as this project, but a different task (negatives include CNV and drusen) and split, and patient grouping is not stated. Category D.
+- **Duke Srinivasan 2014 (Table 7):** 15/15 DME and 15/15 NORMAL volumes correct by leave-three-out cross-validation, after fine-tuning on Duke, with volume = mode of B-scan predictions. These are the same 30 volumes as this project's Duke 2014 external set (§7.4). That set was used here **without any Duke training**: AUROC 1.000, but the pre-specified max rule failed on normal volumes. The protocols differ, so the two results are not comparable as performance figures (category C).
+
+**Rodríguez-Miguel et al. 2024, Sci Rep 14:17633 (category C).**
+
+- Design: a hybrid CNN-RNN reads 22 automatically selected B-scans from each 128-slice Topcon 3D OCT-Maestro cube, and its CNN backbone is pre-trained on Kermany OCT2017. Models were trained on a separate 650-cube ground-truth set, whose test metrics are only in a supplement that was not obtained (NR).
+- Evaluation was on an unselected real-world DR screening cohort: 5,314 cubes from 4,408 subjects, 126 DME (2.37%), with the screening retina specialist's diagnosis as reference.
+- Model 2 AUROC 0.94 (0.91–0.97). Ensemble at the Youden threshold: sensitivity 88.9% (82.1–93.8), specificity 93.3% (92.6–94.0). At the high-specificity threshold: 81.0% / 97.0%, with PPV 39.5%. The high-specificity counts (FN 24, FP 156) are printed and recompute.
+- **Caveats:**
+  - All three thresholds were tuned on the evaluation cohort itself, so the operating points are optimistic.
+  - Repeat screens of the same subjects are included, and the CIs treat cubes as independent.
+- **Inconsistencies, flagged:**
+  - Every threshold-2 row prints the same sensitivity CI (82.1–93.8). For 116/126 the exact interval is 85.9–96.1, so this looks like a copy error.
+  - The false-negative review gives "4 DMEs (12.1%)", which corresponds to 4/33, not the 24 false negatives.
+- This is the only study here evaluated at realistic screening prevalence. It shows how far PPV falls below what a balanced test set suggests, which is directly relevant to this project's 50%-prevalence test set (§15).
+
+**Singh & Gorantla 2020, PLoS ONE 15(2):e0220677 (DMENet; category D, not plotted).**
+
+- Design: **colour fundus photographs** (IDRiD, MESSIDOR), where DME is graded from hard exudates near the macula. It uses a hierarchical CNN ensemble with 5-fold image-level cross-validation on augmented data. This is a different modality and label definition from OCT DME, so it is not comparable.
+- Stage-1 DME detection (Table 3, 360 test images): accuracy 96.67%, sensitivity 97.50%, specificity 95.63%, AUROC 0.9654. The abstract's 96.12% / 96.32% / 95.84% is the 3-grade result averaged over both datasets.
+- **Inconsistency, flagged:** the paper's own confusion matrix (Fig 6A) shows sensitivity 0.968 and specificity 0.965, not Table 3's values. Counts that fit both (TN 195, FP 7, FN 5, TP 153; inferred, not printed) make Table 3's "sensitivity", "specificity" and "precision" the NPV, PPV and specificity. Its F1 (0.9701) is the No-DME class F1.
+
 **Figure 3** therefore shows published AUROCs as a grouped forest-style display:
 
 - this project;
-- Tang 2021 B-scan rows (category B);
-- volume-level results, separated and marked as context only (category C).
+- Tang 2021 and Li 2019 B-scan rows (category B);
+- volume- or cube-level results (Tang, Zhu, Rodríguez-Miguel), separated and marked as context only (category C).
 
-It includes **no cross-study statistical test and no relative-improvement claim**. The external-validation results of both papers come from data this project has never been evaluated on.
+It includes **no cross-study statistical test and no relative-improvement claim**. The external-validation results of these papers come from data this project has never been evaluated on (except Li 2019's Duke 2014 rows, which use a different protocol).
 
 ## 9. 2D versus 3D OCT
 
@@ -235,14 +268,15 @@ The three architectures are statistically indistinguishable (McNemar p = 1.00).
 All curves are computed from continuous raw softmax P(DME); temperature scaling would not change them. The dashed diagonal is a random classifier.
 
 **Figure 3.** Reported performance of published DME classification systems and the present 2D OCT model.
-AUROC with 95% CI as published (Tang 2021 Supplementary Table S1 and main Table 2; Zhu 2025 Table 3) or computed (this project). Circles = B-scan-level evaluation; squares = volume-level evaluation (context only).
+AUROC with 95% CI as published (Tang 2021 Supplementary Table S1 and main Table 2; Li 2019 Table 6; Zhu 2025 Table 3; Rodríguez-Miguel 2024 Results) or computed (this project). Li 2019's printed CIs are narrower than its test size supports (§8). The fundus-based DMENet is not plotted. Circles = B-scan-level evaluation; squares = volume-level evaluation (context only).
 Every row uses a different dataset, population, device, label definition and protocol. The figure shows research context, not a ranking, and no cross-study test was performed.
 
 **Figure 4.** Training and validation performance across training epochs.
 (a) EfficientNet-B3 training and validation loss, parsed from the Kaggle console log, with the phase-A/B boundary and the selected epoch (20) marked.
-(b) Validation AUROC (the checkpoint-selection metric) for B3 and ResNet-50.
+(b) Validation AUROC (the checkpoint-selection metric) for all four models.
 (c) ResNet-50 training and validation loss (selected epoch 30).
-No per-epoch logs survive for B0 or the label-smoothing run. Validation is the patient-disjoint training-time split; the test set was never used.
+(d) EfficientNet-B0 and B3 + label-smoothing training and validation loss (selected epochs 19 and 13), parsed from their Kaggle console logs (`20260920T095427Z`, `20260922T160023Z`). Both runs early-stopped (24 and 18 epochs). The label-smoothed loss is on a different scale.
+The selected epochs agree with the checkpoints: LS peaks at epoch 13 (0.9952), and B0's epoch 19 is one of four epochs tied at 0.9950 (to four decimals). Validation is the patient-disjoint training-time split; the test set was never used.
 
 **Figure 5.** Calibration on the official test set, raw vs temperature-scaled probabilities. Reliability points use 10 equal-width bins, with images per bin shown under each axis. Nearly all predictions lie in the outermost bins. Temperatures were refit on the training-time validation split (n = 5,560); the test set was not used for fitting.
 
@@ -262,14 +296,15 @@ No per-epoch logs survive for B0 or the label-smoothing run. Validation is the p
 - It is, however, a measurement on a small (n = 484), artificially balanced, apparently curated test subset from the same public dataset the models were trained on. Its image-format distribution differs from the training data.
 - The supplementary evaluation on unseen same-dataset images (§5) gives a more conservative internal estimate.
 - The architecture comparison is uninformative: the models are indistinguishable.
-- Relative to the literature, the project's figures **cannot** be read as better than Tang 2021 or Zhu 2025. Those studies used clinically graded diabetic cohorts with harder label definitions, volume-level or multi-device evaluation, and genuine external test sets.
+- Relative to the literature, the project's figures **cannot** be read as better than Tang 2021, Zhu 2025 or Rodríguez-Miguel 2024. Those studies used clinically graded diabetic cohorts with harder label definitions, volume-level or multi-device evaluation, real-world prevalence, and genuine external or screening test sets.
+- The closest published analogue, Li F 2019 (single Spectralis B-scans, DME vs NORMAL, patient-disjoint test), reports AUROC 0.996 in a different population. Results of this magnitude on curated B-scan sets are therefore not unusual. Its printed CIs cannot be reconciled with its test size, and no cross-study test was performed.
 
 ## 15. Limitations
 
 - External evidence is limited to three small public datasets (§7.4): OCTDL (Optovue, DME vs normal B-scans), Duke 2014 (Spectralis, 15 DME / 15 normal volumes) and Duke 2015 (Spectralis, DME only, so sensitivity only). None is a clinically graded, prospective cohort. The models are foveal B-scan classifiers, and no volume-level aggregation rule has been validated.
 - The official test set is small, balanced (prevalence 50%), and distributionally unlike the training data. PPV does not transfer to screening prevalence.
 - Patient is the finest grouping available; correlated B-scans from one eye or volume cannot be identified.
-- The original tuned thresholds and temperatures were not valid (§7.2). They have been refit on the rebuilt training-time split; the refit depends on reproducing the scikit-learn 1.4.2 partition, which was confirmed by exact count matching rather than a saved manifest.
+- The original tuned thresholds and temperatures were not valid (§7.2). They have been refit on the rebuilt training-time split; the refit depends on reproducing the scikit-learn 1.4.2 partition, which was confirmed by exact count matching rather than a saved manifest. (Future runs now save one, and scikit-learn is pinned to 1.4.2; see §18.)
 - Per-image outputs were not saved originally; the reconstructed outputs come from a different software stack (agreement with every stored aggregate was confirmed).
 - The audited B0 run folder's log is empty; its exclusion of test patients is verified through an identical-weights run whose log survives (`20260920T095427Z`). The B3 per-epoch log is a console reconstruction without accuracy.
 - Labels come from the public dataset folders. Kermany "DME" vs "NORMAL" is a different label definition from clinically graded DME in diabetic cohorts, and negatives exclude other pathology.
@@ -345,9 +380,9 @@ python research_outputs/scripts/13_external_validation.py
 
 ## 18. Recommended future experiments
 
-1. ~~Rebuild the training-time split with scikit-learn 1.4.2 and refit the threshold and temperature.~~ **Done** (§7.2, scripts 11–12). Remaining: save the split manifest at training time in future runs, and pin scikit-learn in `requirements.txt`.
+1. ~~Rebuild the training-time split with scikit-learn 1.4.2 and refit the threshold and temperature.~~ **Done** (§7.2, scripts 11–12). `requirements.txt` now pins `scikit-learn==1.4.2`, and `train.py` writes `split_manifest.csv` (path, label, patient, split, scikit-learn version) at the start of every run.
 2. ~~Evaluate on an external DME dataset from a different site or device~~ **Partly done** (§7.4: OCTDL, Duke 2015). Duke Srinivasan 2014 was added later (§7.4). Remaining: a clinically graded diabetic cohort, and a volume aggregation or foveal slice-selection rule fixed on separate data. The Isfahan MISP Basel set (swept-source OCT, 40 DME / 50 healthy volumes) was identified but not downloaded.
-3. Save per-image predictions in `evaluate.py` for every future run.
+3. ~~Save per-image predictions in `evaluate.py` for every future run.~~ **Done:** `evaluate.py` writes `predictions.csv` (validation and test: path, patient, label, both logits, raw and calibrated P(DME)) next to `metrics.json`. Existing checkpoints and results were not rerun.
 4. Re-train the U-Net with ungraded pixels masked out of the loss and metric, a positive-class weight, and a sanity check against all-foreground and all-background baselines.
 5. If volumes become available, evaluate at the volume level to allow category-A/B comparison with Tang 2021.
 
@@ -359,5 +394,8 @@ python research_outputs/scripts/13_external_validation.py
 4. Chiu SJ, Allingham MJ, Mettu PS, Cousins SW, Izatt JA, Farsiu S. Kernel regression based segmentation of optical coherence tomography images with diabetic macular edema. *Biomed Opt Express*. 2015;6(4):1172. doi:10.1364/BOE.6.001172.
 5. DeLong ER, DeLong DM, Clarke-Pearson DL. Comparing the areas under two or more correlated receiver operating characteristic curves: a nonparametric approach. *Biometrics*. 1988;44(3):837. doi:10.2307/2531595.
 6. Sun X, Xu W. Fast Implementation of DeLong's Algorithm for Comparing the Areas Under Correlated Receiver Operating Characteristic Curves. *IEEE Signal Process Lett*. 2014;21(11):1389–1393. doi:10.1109/LSP.2014.2337313.
+7. Li F, Chen H, Liu Z, Zhang XD, Jiang MS, Wu ZZ, Zhou KQ. Deep learning-based automated detection of retinal diseases using optical coherence tomography images. *Biomed Opt Express*. 2019;10(12):6204–6226. doi:10.1364/BOE.10.006204.
+8. Rodríguez-Miguel A, Arruabarrena C, Allendes G, Olivera M, Zarranz-Ventura J, Teus MA. Hybrid deep learning models for the screening of Diabetic Macular Edema in optical coherence tomography volumes. *Sci Rep*. 2024;14:17633. doi:10.1038/s41598-024-68489-2.
+9. Singh RK, Gorantla R. DMENet: Diabetic Macular Edema diagnosis using Hierarchical Ensemble of CNNs. *PLoS ONE*. 2020;15(2):e0220677. doi:10.1371/journal.pone.0220677.
 
 Full author lists: `research_audit/references.bib`.

@@ -67,7 +67,7 @@ lit = pd.read_csv(AUDIT / "literature_extraction.csv"); f3 = pd.read_csv(FIG / "
 for _, r in f3.iterrows():
     if "This project" in r.group:
         continue
-    bad += not np.isclose(lit.auroc.astype(float), r.auroc).any()
+    bad += not np.isclose(pd.to_numeric(lit.auroc, errors="coerce"), r.auroc).any()
 rb = pd.read_csv(DATA / "reliability_bins.csv"); f5 = pd.read_csv(FIG / "figure5_reliability_plotted_values.csv")
 for _, r in f5.iterrows():
     t = rb[(rb.model == r.model) & (rb.probabilities == r.probabilities) & (rb.bin == r.bin)].iloc[0]
