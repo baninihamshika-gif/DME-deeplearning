@@ -578,11 +578,17 @@ def boundary_distance(pred: np.ndarray, target: np.ndarray) -> float:
 # Retrain (2026-10-28) after the research audit found the first run
 # non-functional (fluid predicted on ~100% of pixels, best checkpoint at
 # epoch 1). Changes, each tied to an audit finding:
-#   - loss and every metric are restricted to the graded region
-#     (graded_region(): manually graded columns, letterbox padding excluded);
+#   - every metric is restricted to the graded region (graded_region():
+#     manually graded columns, letterbox padding excluded);
+#   - the LOSS covers the whole frame (LOSS_REGION): letterbox padding and
+#     the ungraded lateral margins count as background. A first retrain that
+#     also masked them out of the loss scored well on the graded band but
+#     predicted fluid on ~57% of the ungraded retina and ~95% of the padding,
+#     which made it unusable on a full B-scan (app.py). full_frame_check()
+#     now reports that behaviour next to the graded-band metrics;
 #   - class imbalance (fluid ~1% of graded pixels): BCE with a fixed
-#     pos_weight plus a soft Dice term pooled over the batch, both on graded
-#     pixels only -- fixed a priori, not tuned;
+#     pos_weight plus a soft Dice term pooled over the batch -- fixed a
+#     priori, not tuned;
 #   - checkpoint AND probability threshold are selected jointly on val
 #     only: each epoch, val pooled Dice is computed over THRESHOLD_GRID and
 #     its maximum is the epoch's score (pos_weight shifts calibration, so a
@@ -604,6 +610,9 @@ WEIGHT_DECAY_SEG = 1e-4
 BCE_POS_WEIGHT = 10.0  # fixed a priori; Dice term carries the rest of the imbalance handling
 DICE_LOSS_WEIGHT = 1.0
 THRESHOLD_GRID = [round(t, 2) for t in np.arange(0.05, 0.96, 0.05)]
+# "full_frame": padding + ungraded margins are background in the loss (accepts some
+# label noise from unmarked fluid in the margins). "graded": the first retrain's setting.
+LOSS_REGION = "full_frame"
 
 
 def threshold_sweep(probs: List[np.ndarray], gts: List[np.ndarray], gradeds: List[np.ndarray]) -> Tuple[float, dict]:
@@ -658,7 +667,7 @@ def native_eval_set(entries: List[dict]) -> List[dict]:
     return out
 
 
-def predict_native(model, ds: "DukeFluidDataset", eval_set: List[dict], device, batch_size: int = BATCH_SIZE_SEG_CPU) -> List[np.ndarray]:
+def predict_native(model, ds: "DukeFluidDataset", eval_set: List[dict], device, batch_size: int = BATCH_SIZE_SEG_CPU, return_raw: bool = False):
     import torch
 
     model.eval()
@@ -667,7 +676,49 @@ def predict_native(model, ds: "DukeFluidDataset", eval_set: List[dict], device, 
         for i in range(0, len(ds), batch_size):
             batch = torch.stack([ds[j][0] for j in range(i, min(i + batch_size, len(ds)))]).to(device)
             probs.extend(torch.sigmoid(model(batch))[:, 0].cpu().numpy())
-    return [unletterbox(p, s["hw"]) for p, s in zip(probs, eval_set)]
+    native = [unletterbox(p, s["hw"]) for p, s in zip(probs, eval_set)]
+    return (native, probs) if return_raw else native
+
+
+def full_frame_check(native_probs: List[np.ndarray], raw_probs: List[np.ndarray], eval_set: List[dict], threshold: float,
+                     size: int = IMAGE_SIZE_SEG) -> dict:
+    """Behaviour OUTSIDE the graded band, which the graded-band metrics cannot
+    see: predicted-fluid fraction in the graded band, in the ungraded lateral
+    margins (native res), and in the letterbox padding (model resolution);
+    whole-frame pooled Dice (ground truth is 0 outside the band); the
+    whole-320x320-frame fluid fraction that app.py displays, next to the
+    grader-1 fraction of the same frame."""
+    band = margin = band_n = margin_n = pad = pad_n = inter = psum = gsum = 0
+    any_fp_empty, n_empty, app_frac, gt_frac = 0, 0, [], []
+    for pn, pr, s in zip(native_probs, raw_probs, eval_set):
+        pred = pn > threshold
+        cols = s["graded"].any(axis=0)
+        g = s["gt1"].astype(bool)
+        band += int(pred[:, cols].sum()); band_n += int(pred[:, cols].size)
+        margin += int(pred[:, ~cols].sum()); margin_n += int(pred[:, ~cols].size)
+        inter += int((pred & g).sum()); psum += int(pred.sum()); gsum += int(g.sum())
+        h, w = s["hw"]
+        new_h, new_w = max(1, round(h * size / max(h, w))), max(1, round(w * size / max(h, w)))
+        top, left = (size - new_h) // 2, (size - new_w) // 2
+        content = np.zeros((size, size), bool)
+        content[top : top + new_h, left : left + new_w] = True
+        pr_pred = pr > threshold
+        pad += int(pr_pred[~content].sum()); pad_n += int((~content).sum())
+        app_frac.append(float(pr_pred.mean()))
+        gt_frac.append(float(g.sum()) * (new_h * new_w) / (h * w) / size**2)
+        if not g.any():
+            n_empty += 1
+            any_fp_empty += int(pred.any())
+    return {
+        "pred_frac_graded_band": band / max(1, band_n),
+        "pred_frac_ungraded_margins": margin / max(1, margin_n),
+        "pred_frac_letterbox_padding": pad / max(1, pad_n),
+        "full_frame_pooled_dice": 2 * inter / (psum + gsum) if (psum + gsum) else float("nan"),
+        "n_empty_gt": n_empty,
+        "n_empty_gt_with_any_predicted_fluid_full_frame": any_fp_empty,
+        "mean_app_frame_fluid_frac": float(np.mean(app_frac)),
+        "mean_gt1_frame_fluid_frac": float(np.mean(gt_frac)),
+    }
 
 
 def segmentation_metrics(preds: List[np.ndarray], gts: List[np.ndarray], gradeds: List[np.ndarray]) -> dict:
@@ -746,6 +797,7 @@ def per_image_rows(split: str, probs: List[np.ndarray], eval_set: List[dict], th
             "split": split, "subject": s["subject"], "scan_idx": s["scan_idx"],
             "graded_pixels": int(m.sum()), "gt1_fluid_pixels": int(g1.sum()), "gt2_fluid_pixels": int(g2.sum()),
             "pred_fluid_pixels": int(pred.sum()),
+            "pred_fluid_pixels_outside_band": int(((p > threshold) & ~s["graded"].any(axis=0)[None, :]).sum()),
             "dice_model_vs_g1": dice_coefficient(pred[m], g1[m]), "iou_model_vs_g1": iou_score(pred[m], g1[m]),
             "dice_model_vs_g2": dice_coefficient(pred[m], g2[m]),
             "dice_g2_vs_g1": dice_coefficient(g2[m], g1[m]),
@@ -764,12 +816,15 @@ def _log_epoch_row(log_path: Path, row: dict) -> None:
 
 
 def train_seg_epoch(model, loader, optimizer, device) -> float:
+    import torch
+
     model.train()
     total, n = 0.0, 0
     for images, masks, graded in loader:
         images, masks, graded = images.to(device), masks.to(device), graded.to(device)
         optimizer.zero_grad()
-        loss = masked_seg_loss(model(images), masks, graded)
+        loss_region = torch.ones_like(graded) if LOSS_REGION == "full_frame" else graded
+        loss = masked_seg_loss(model(images), masks, loss_region)
         loss.backward()
         optimizer.step()
         total += loss.item() * images.size(0)
@@ -779,7 +834,8 @@ def train_seg_epoch(model, loader, optimizer, device) -> float:
 
 def save_examples_figure(out_path: Path, ds: "DukeFluidDataset", probs, eval_set, threshold: float, n: int = 4) -> None:
     """Native-res overlays for the n scans with the most grader-1 fluid
-    (plus their grader-2 mask) -- qualitative only."""
+    (plus their grader-2 mask) -- qualitative only. The model mask is NOT
+    clipped to the graded band, so off-band predictions stay visible."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -791,7 +847,7 @@ def save_examples_figure(out_path: Path, ds: "DukeFluidDataset", probs, eval_set
     for row, i in enumerate(order):
         s = eval_set[i]
         img = load_scan(ds.entries[i], cache)["image"]
-        pred = ((probs[i] > threshold) & s["graded"].astype(bool)).astype(np.uint8)
+        pred = (probs[i] > threshold).astype(np.uint8)
         for col, (mask, title) in enumerate(((s["gt1"], "grader 1"), (s["gt2"], "grader 2"), (pred, f"model (t={threshold})"))):
             axes[row, col].imshow(draw_fluid_overlay(img, mask))
             axes[row, col].set_title(f"Subject_{s['subject']} scan {s['scan_idx']} -- {title}", fontsize=9)
@@ -893,7 +949,7 @@ def main():
 
     # Best checkpoint; recompute its val sweep (identical to the selection-time one).
     model.load_state_dict(load_checkpoint(best_ckpt_path, map_location=device)["model_state_dict"])
-    val_probs = predict_native(model, val_ds, val_set, device)
+    val_probs, val_raw = predict_native(model, val_ds, val_set, device, return_raw=True)
     gts, gradeds = [s["gt1"] for s in val_set], [s["graded"] for s in val_set]
     threshold, sweep = threshold_sweep(val_probs, gts, gradeds)
     print(f"[segment] best epoch {best_epoch}; val threshold sweep (pooled Dice): " + ", ".join(f"{t}:{d:.3f}" for t, d in sweep.items()))
@@ -908,9 +964,11 @@ def main():
         "chosen_threshold": threshold,
         "hyperparameters": {"batch_size": BATCH_SIZE_SEG_CPU, "lr": LR_SEG_RETRAIN, "weight_decay": WEIGHT_DECAY_SEG,
                             "bce_pos_weight": BCE_POS_WEIGHT, "dice_loss_weight": DICE_LOSS_WEIGHT,
-                            "max_epochs": epochs_total, "early_stop_patience": EARLY_STOP_PATIENCE_SEG, "image_size": IMAGE_SIZE_SEG},
+                            "max_epochs": epochs_total, "early_stop_patience": EARLY_STOP_PATIENCE_SEG, "image_size": IMAGE_SIZE_SEG,
+                            "loss_region": LOSS_REGION},
         "val": split_report(val_probs, val_set, threshold),
         "val_at_0.5": split_report(val_probs, val_set, 0.5)["model"],
+        "val_full_frame_check": full_frame_check(val_probs, val_raw, val_set, threshold),
     }
     rows = per_image_rows("val", val_probs, val_set, threshold)
 
@@ -920,9 +978,10 @@ def main():
         # Single test evaluation -- everything above is frozen at this point.
         test_ds = DukeFluidDataset(test_entries, augment=False)
         test_set = native_eval_set(test_entries)
-        test_probs = predict_native(model, test_ds, test_set, device)
+        test_probs, test_raw = predict_native(model, test_ds, test_set, device, return_raw=True)
         summary["test"] = split_report(test_probs, test_set, threshold)
         summary["test_at_0.5"] = split_report(test_probs, test_set, 0.5)["model"]
+        summary["test_full_frame_check"] = full_frame_check(test_probs, test_raw, test_set, threshold)
         rows += per_image_rows("test", test_probs, test_set, threshold)
         save_examples_figure(args.artifacts_dir / "segmentation_test_examples.png", test_ds, test_probs, test_set, threshold)
     save_examples_figure(args.artifacts_dir / "segmentation_val_examples.png", val_ds, val_probs, val_set, threshold)
@@ -943,6 +1002,7 @@ def main():
             m = r[name]
             print(f"  {name:26s} pooled Dice {m['pooled_dice']:.4f}  mean Dice {m['mean_dice']:.4f}  "
                   f"mean Dice fluid+ {m['mean_dice_fluid_positive']:.4f}  pooled IoU {m['pooled_iou']:.4f}")
+        print(f"  full-frame check: {json.dumps(summary[split + '_full_frame_check'], default=float)}")
     print(f"\n[segment] summary written: {summary_path}")
 
 

@@ -1,0 +1,58 @@
+[segment] rasterization verification figure written: D:\Projects\DME-DEEPLEARN\artifacts\segmentation_retrain_v2\segmentation_rasterization_check.png
+[segment]   fluid pixels: 10519 / 380928
+[segment]   boundary NaN columns: 271 / 768
+[segment] Duke index: 110 manually-annotated scans across 10 subjects
+[segment] patient-grouped split (seed=42): train=6 patients/66 scans ['02', '03', '04', '05', '09', '10'], val=2 patients/22 scans ['01', '08'], test=2 patients/22 scans ['06', '07']
+[segment] patient overlap train<->val<->test: 0 (PASSED, by construction -- disjoint subject sets)
+[segment] encoder transfer from D:\Projects\DME-DEEPLEARN\artifacts\kaggle\20260917T035646Z\artifacts\checkpoint_best.pt:
+[segment]   matched: 572/572 encoder keys
+[segment epoch 1/100] train_loss=2.2261 val_pooled_dice=0.0313 (t=0.65) val_dice_fluid+=0.0356 pred_frac=0.2846 *best* (41.7s)
+[segment epoch 2/100] train_loss=1.9135 val_pooled_dice=0.1106 (t=0.65) val_dice_fluid+=0.1241 pred_frac=0.0284 *best* (42.3s)
+[segment epoch 3/100] train_loss=1.7477 val_pooled_dice=0.5346 (t=0.7) val_dice_fluid+=0.3808 pred_frac=0.0174 *best* (41.8s)
+[segment epoch 4/100] train_loss=1.6359 val_pooled_dice=0.6591 (t=0.85) val_dice_fluid+=0.3974 pred_frac=0.0211 *best* (42.2s)
+[segment epoch 5/100] train_loss=1.5485 val_pooled_dice=0.6962 (t=0.85) val_dice_fluid+=0.4569 pred_frac=0.0178 *best* (45.2s)
+[segment epoch 6/100] train_loss=1.4537 val_pooled_dice=0.7005 (t=0.8) val_dice_fluid+=0.4665 pred_frac=0.0174 *best* (44.7s)
+[segment epoch 7/100] train_loss=1.3545 val_pooled_dice=0.6597 (t=0.95) val_dice_fluid+=0.4327 pred_frac=0.0270  (44.7s)
+[segment epoch 8/100] train_loss=1.2750 val_pooled_dice=0.7387 (t=0.95) val_dice_fluid+=0.4833 pred_frac=0.0151 *best* (45.3s)
+[segment epoch 9/100] train_loss=1.2113 val_pooled_dice=0.7527 (t=0.9) val_dice_fluid+=0.4865 pred_frac=0.0161 *best* (45.7s)
+[segment epoch 10/100] train_loss=1.1676 val_pooled_dice=0.7452 (t=0.95) val_dice_fluid+=0.4209 pred_frac=0.0143  (45.5s)
+[segment epoch 11/100] train_loss=1.1297 val_pooled_dice=0.7263 (t=0.8) val_dice_fluid+=0.5226 pred_frac=0.0172  (45.7s)
+[segment epoch 12/100] train_loss=1.0990 val_pooled_dice=0.7585 (t=0.9) val_dice_fluid+=0.5115 pred_frac=0.0179 *best* (45.3s)
+[segment epoch 13/100] train_loss=1.0706 val_pooled_dice=0.7677 (t=0.9) val_dice_fluid+=0.5143 pred_frac=0.0170 *best* (45.7s)
+[segment epoch 14/100] train_loss=1.0391 val_pooled_dice=0.7548 (t=0.9) val_dice_fluid+=0.5321 pred_frac=0.0174  (46.8s)
+[segment epoch 15/100] train_loss=1.0165 val_pooled_dice=0.7501 (t=0.9) val_dice_fluid+=0.5322 pred_frac=0.0186  (46.1s)
+[segment epoch 16/100] train_loss=0.9835 val_pooled_dice=0.7886 (t=0.95) val_dice_fluid+=0.5290 pred_frac=0.0152 *best* (45.1s)
+[segment epoch 17/100] train_loss=0.9602 val_pooled_dice=0.7853 (t=0.9) val_dice_fluid+=0.5435 pred_frac=0.0175  (47.9s)
+[segment epoch 18/100] train_loss=0.9233 val_pooled_dice=0.7794 (t=0.9) val_dice_fluid+=0.5191 pred_frac=0.0161  (46.9s)
+[segment epoch 19/100] train_loss=0.9082 val_pooled_dice=0.7727 (t=0.95) val_dice_fluid+=0.5275 pred_frac=0.0159  (45.4s)
+[segment epoch 20/100] train_loss=0.8693 val_pooled_dice=0.7747 (t=0.95) val_dice_fluid+=0.5950 pred_frac=0.0186  (43.5s)
+[segment epoch 21/100] train_loss=0.8249 val_pooled_dice=0.7745 (t=0.9) val_dice_fluid+=0.5549 pred_frac=0.0171  (51.3s)
+[segment epoch 22/100] train_loss=0.7973 val_pooled_dice=0.7743 (t=0.9) val_dice_fluid+=0.5569 pred_frac=0.0164  (78.4s)
+[segment epoch 23/100] train_loss=0.7481 val_pooled_dice=0.7814 (t=0.9) val_dice_fluid+=0.5732 pred_frac=0.0165  (114.7s)
+[segment epoch 24/100] train_loss=0.7187 val_pooled_dice=0.7867 (t=0.85) val_dice_fluid+=0.5954 pred_frac=0.0177  (46.5s)
+[segment epoch 25/100] train_loss=0.6912 val_pooled_dice=0.7856 (t=0.7) val_dice_fluid+=0.5653 pred_frac=0.0171  (129.1s)
+[segment epoch 26/100] train_loss=0.6949 val_pooled_dice=0.7856 (t=0.45) val_dice_fluid+=0.5625 pred_frac=0.0173  (109.9s)
+[segment epoch 27/100] train_loss=0.6667 val_pooled_dice=0.7861 (t=0.3) val_dice_fluid+=0.5755 pred_frac=0.0170  (53.5s)
+[segment epoch 28/100] train_loss=0.6140 val_pooled_dice=0.7873 (t=0.6) val_dice_fluid+=0.5593 pred_frac=0.0166  (54.8s)
+[segment epoch 29/100] train_loss=0.6194 val_pooled_dice=0.7821 (t=0.2) val_dice_fluid+=0.5564 pred_frac=0.0163  (52.9s)
+[segment epoch 30/100] train_loss=0.6002 val_pooled_dice=0.7840 (t=0.6) val_dice_fluid+=0.5713 pred_frac=0.0167  (56.8s)
+[segment epoch 31/100] train_loss=0.5670 val_pooled_dice=0.7772 (t=0.4) val_dice_fluid+=0.5796 pred_frac=0.0174  (51.2s)
+[segment] early stopping: no val pooled Dice improvement in 15 epochs
+[segment] best epoch 16; val threshold sweep (pooled Dice): 0.05:0.032, 0.1:0.428, 0.15:0.540, 0.2:0.574, 0.25:0.598, 0.3:0.617, 0.35:0.634, 0.4:0.648, 0.45:0.662, 0.5:0.674, 0.55:0.686, 0.6:0.698, 0.65:0.710, 0.7:0.723, 0.75:0.735, 0.8:0.749, 0.85:0.764, 0.9:0.783, 0.95:0.789
+[segment] chosen threshold (val only): 0.95
+
+[val] subjects ['01', '08']
+  model                      pooled Dice 0.7886  mean Dice 0.6360  mean Dice fluid+ 0.5290  pooled IoU 0.6510
+  baseline_all_foreground    pooled Dice 0.0308  mean Dice 0.0299  mean Dice fluid+ 0.0387  pooled IoU 0.0156
+  baseline_all_background    pooled Dice 0.0000  mean Dice 0.2273  mean Dice fluid+ 0.0000  pooled IoU 0.0000
+  inter_grader_g2_vs_g1      pooled Dice 0.7014  mean Dice 0.5204  mean Dice fluid+ 0.5558  pooled IoU 0.5402
+  full-frame check: {"pred_frac_graded_band": 0.015118927469681555, "pred_frac_ungraded_margins": 0.0, "pred_frac_letterbox_padding": 0.0, "full_frame_pooled_dice": 0.7886247643061338, "n_empty_gt": 5, "n_empty_gt_with_any_predicted_fluid_full_frame": 0, "mean_app_frame_fluid_frac": 0.006963334517045455, "mean_gt1_frame_fluid_frac": 0.007095665805850212}
+
+[test] subjects ['06', '07']
+  model                      pooled Dice 0.6382  mean Dice 0.7103  mean Dice fluid+ 0.5448  pooled IoU 0.4687
+  baseline_all_foreground    pooled Dice 0.0203  mean Dice 0.0195  mean Dice fluid+ 0.0306  pooled IoU 0.0103
+  baseline_all_background    pooled Dice 0.0000  mean Dice 0.3636  mean Dice fluid+ 0.0000  pooled IoU 0.0000
+  inter_grader_g2_vs_g1      pooled Dice 0.6940  mean Dice 0.7548  mean Dice fluid+ 0.6147  pooled IoU 0.5314
+  full-frame check: {"pred_frac_graded_band": 0.009156835208627668, "pred_frac_ungraded_margins": 0.0, "pred_frac_letterbox_padding": 0.0, "full_frame_pooled_dice": 0.6382277587159036, "n_empty_gt": 8, "n_empty_gt_with_any_predicted_fluid_full_frame": 0, "mean_app_frame_fluid_frac": 0.004098899147727273, "mean_gt1_frame_fluid_frac": 0.004507908303716665}
+
+[segment] summary written: D:\Projects\DME-DEEPLEARN\artifacts\segmentation_retrain_v2\segmentation_summary.json

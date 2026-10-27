@@ -46,8 +46,9 @@ RANDOMIZATION_CORRELATION_THRESHOLD docstring for the same pattern):
     from the real corpus run's thickness_summary.json rather than
     recomputed live -- recomputing it here would mean re-running the
     ~2-hour full-corpus pass on every app launch). Neither result is
-    clinically reliable on its own -- E1's real test Dice is 0.0090 (see
-    phase4-segmentation-signoff.md: verdict "future work"), E2's real
+    clinically reliable on its own -- E1's retrained U-Net reaches pooled
+    test Dice 0.64 on only 2 held-out Duke subjects (one device; see
+    research_outputs/segmentation_retrain_report.md), E2's real
     separation is AUC 0.601 ("heavy overlap", phase5-thickening-signoff.md)
     -- so both are shown with an explicit, un-hideable disclaimer next to
     the number/image, never presented as equivalent in confidence to the
@@ -90,7 +91,9 @@ from thickness import (
 # Judgment-call constants (see module docstring)
 # ---------------------------------------------------------------------------
 LOW_CONFIDENCE_MARGIN = 0.10
-SEGMENTATION_FLUID_THRESHOLD = 0.5  # matches segment.py's own run_seg_epoch (torch.sigmoid(logits) > 0.5)
+# Chosen on the Duke validation subjects only, together with the checkpoint epoch
+# (segmentation_summary.json "chosen_threshold"; research_outputs/segmentation_retrain_report.md).
+SEGMENTATION_FLUID_THRESHOLD = 0.95
 
 # Real distribution stats from the actual full held-out test-set run (not
 # recomputed here -- read-only display constants, sourced verbatim from
@@ -109,9 +112,11 @@ DEFAULT_CHECKPOINT = config.ARTIFACTS_DIR / "kaggle" / "20260917T035646Z" / "art
 # Real trained E1/E2 artifacts (see phase4-segmentation-signoff.md / phase5-thickening-signoff.md).
 # Both are optional -- if a file is missing, the corresponding UI section degrades to the
 # original "not available" placeholder rather than crashing or inventing a result.
-DEFAULT_SEGMENTATION_CHECKPOINT = (
-    config.ARTIFACTS_DIR / "kaggle" / "20260923T181925Z" / "artifacts" / "segmentation" / "checkpoint_best.pt"
-)
+# Retrained U-Net (segment.py, 2026-10-28, v2: padding and ungraded margins are background
+# in the loss). The original Kaggle checkpoint
+# (artifacts/kaggle/20260923T181925Z/.../segmentation/checkpoint_best.pt) collapsed to
+# near-all-foreground predictions and is no longer the default.
+DEFAULT_SEGMENTATION_CHECKPOINT = config.ARTIFACTS_DIR / "segmentation_retrain_v2" / "checkpoint_best.pt"
 DEFAULT_THICKNESS_SUMMARY = config.ARTIFACTS_DIR / "thickness" / "thickness_summary.json"
 
 # ---------------------------------------------------------------------------
@@ -258,8 +263,8 @@ def draw_fluid_overlay_disclaimed(image_gray: np.ndarray, fluid_mask: np.ndarray
     changing its visual style would retroactively change what phase4-segmentation-
     signoff.md's figures show.
 
-    This model's real, accepted test Dice is 0.0090 (see phase4-segmentation-
-    signoff.md) -- essentially unusable. A solid, saturated red fill reads as a
+    The retrained model is validated on only 2 held-out Duke subjects (pooled
+    test Dice 0.64) and not at all on other devices. A solid, saturated red fill reads as a
     confident clinical finding regardless of the text disclaimer next to it, which
     visually contradicts what the number says. A 45-degree hatch pattern (instead
     of a solid fill) makes the overlay itself look provisional/flagged rather than
@@ -691,9 +696,9 @@ def render_extended_html(result: dict) -> str:
         seg_row = (
             f'<div class="extended-row"><span class="extended-label">Fluid area (E1)</span>'
             f'<span class="extended-value">{segmentation["fluid_area_frac"] * 100:.1f}% of scan</span></div>'
-            '<div class="extended-note">Real model output, but under-trained — test Dice 0.0090 on held-out '
-            'Duke scans. Not clinically reliable; treated as future work, not a usable result. '
-            'See phase4-segmentation-signoff.md.</div>'
+            '<div class="extended-note">Research model output — pooled Dice 0.64 against one grader on only '
+            '2 held-out Duke (Spectralis) subjects; untested on other devices. Not clinically validated. '
+            'See research_outputs/segmentation_retrain_report.md.</div>'
         )
 
     return (
@@ -973,10 +978,10 @@ def render_view_note(result: Optional[dict], view: str) -> str:
             reason = _extended_unavailable_reason("segmentation", result)
             return f'<div class="extended-value placeholder">Segmentation mask {reason}.</div>'
         return (
-            '<div class="extended-note">Real E1 model output — under-trained (test Dice 0.0090), '
-            "not clinically reliable. Hatched red = predicted fluid (deliberately not a solid fill, "
-            "so the overlay itself doesn't look more confident than the result is). "
-            "See phase4-segmentation-signoff.md.</div>"
+            '<div class="extended-note">Research E1 model output — pooled Dice 0.64 on only 2 held-out '
+            "Duke subjects, untested on other devices; not clinically validated. Hatched red = predicted "
+            "fluid (deliberately not a solid fill, so the overlay itself doesn't look more confident than "
+            "the result is). See research_outputs/segmentation_retrain_report.md.</div>"
         )
     if view == "thickness map":
         thk = result.get("thickness")

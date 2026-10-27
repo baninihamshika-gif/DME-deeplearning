@@ -1,5 +1,87 @@
 # Fluid segmentation retrain (Duke DME 2015): results note
 
+## Erratum (2026-10-28): the first retrain (v1) does not work on a full B-scan; superseded by v2
+
+**What was wrong.** v1 (commit da997e8, results further below) masked the letterbox padding *and* the
+ungraded side margins out of the loss. As a result it was never penalised for predicting fluid there.
+All v1 metrics and figures were restricted to the graded band, so this did not show. It surfaced when
+the checkpoint was wired into `app.py`, which segments the whole frame. Measured with
+`full_frame_check()` at v1's threshold 0.80:
+
+| v1, val subjects | Value |
+|---|---|
+| Predicted fluid, ungraded margins | ~40% |
+| Predicted fluid, letterbox padding | ~94% |
+| Fluid-free scans with predicted fluid somewhere in the frame | 5/5 |
+| Whole-frame pooled Dice | 0.13 |
+| Whole-frame fluid fraction that `app.py` would display | 42%, against 0.7% marked by grader 1 |
+
+On two Subject_06 test scans, the margins were ~57% and the padding ~95%.
+
+The v1 graded-band numbers below are correct as stated. However, v1 is not usable as a segmentation model.
+
+**Fix (v2, commit 65d4b78).** The loss now covers the whole frame (`LOSS_REGION = "full_frame"`): padding
+and ungraded margins count as background. This accepts some label noise, because any unmarked fluid in
+the margins is learned as background. Everything else is unchanged: data, split, encoder initialisation,
+hyperparameters, selection rule, graded-band metrics, and a single test evaluation. Checkpoint:
+`artifacts/segmentation_retrain_v2/checkpoint_best.pt` (git-ignored). Results:
+`research_outputs/segmentation_retrain_v2/`.
+
+**Test-set reuse, disclosed.** The two test subjects (06, 07) have now scored two models (v1 and v2).
+While diagnosing the problem, v1's whole-frame behaviour was also inspected on two Subject_06 test
+scans, as well as on Kermany images. The decision to retrain was driven by v1's whole-frame
+behaviour, which was equally visible on val. It was not driven by any test Dice. Nothing in v2 was tuned on test.
+Even so, the test split is no longer strictly untouched, and the v2 test numbers should be read with that in mind.
+
+### v2 results (graded band, ground truth = grader 1; same conventions as below)
+
+**Selection:** best epoch 16 of 31 (early stop). Val-chosen threshold **0.95**.
+
+**The threshold is at the top edge of the grid.** Val pooled Dice was still rising there: 0.783 at 0.90,
+0.789 at 0.95. A higher threshold might do slightly better on val. The grid was fixed in advance and not
+extended after seeing this.
+
+| Split | Model pooled Dice | Model mean Dice (fluid+) | Pooled IoU | All-fg pooled Dice | All-bg pooled Dice | Grader 2 vs 1 pooled Dice | Grader 2 vs 1 mean Dice (fluid+) |
+|---|---|---|---|---|---|---|---|
+| Val (01, 08) | **0.789** | 0.529 | 0.651 | 0.031 | 0.000 | 0.701 | 0.556 |
+| Test (06, 07) | **0.638** | 0.545 | 0.469 | 0.020 | 0.000 | 0.694 | 0.615 |
+
+- **Per subject, pooled Dice:** val 01 0.821, 08 0.596; test 06 0.612, 07 0.799.
+- **At threshold 0.5 (not selected):** test pooled Dice 0.652.
+- **Model vs grader 2:** mean Dice on fluid-positive scans is 0.527 on test.
+- **Mean Dice over all scans:** 0.636 on val and 0.710 on test. These include the Dice = 1 empty-scan convention.
+
+**v2 whole-frame check** (`full_frame_check()`, at threshold 0.95):
+
+| | Val | Test |
+|---|---|---|
+| Predicted fluid, graded band | 1.5% | 0.9% |
+| Predicted fluid, ungraded margins | 0.0% | 0.0% |
+| Predicted fluid, letterbox padding | 0.0% | 0.0% |
+| Whole-frame pooled Dice | 0.789 | 0.638 |
+| Fluid-free scans with any predicted fluid | 0/5 | 0/8 |
+| Fluid fraction of the 320x320 frame (`app.py`'s readout) | 0.70% | 0.41% |
+| Grader-1 fluid fraction of the same frame | 0.71% | 0.45% |
+
+**Informal external sanity check, not a validation.** This used `app.py`'s own inference path on the
+first 40 Kermany OCT2017 test images per class. Kermany has no fluid masks.
+- DME images: fluid on 40/40, median 1.4% of the frame.
+- Normal images: median 0%, with fluid on 14/40, and at most 0.19% of the frame.
+
+**Interpretation.** v2 fixes the full-frame failure. The cost is lower graded-band agreement on test:
+pooled Dice 0.64 against 0.71 for v1, and below grader-vs-grader agreement (0.69). With 2 test subjects,
+the v1-v2 difference is within the noise, and the comparison is not a clean one anyway (see test-set
+reuse). The qualitative failure mode is the same as v1: neighbouring cysts are merged into smooth
+regions, septa are missed, and small or faint fluid is sometimes missed. All limits listed below apply
+to v2 unchanged.
+
+**app.py** now uses the v2 checkpoint at threshold 0.95 (branch `claude/app-seg-retrain`). The
+on-screen notes quote test pooled Dice 0.64 and state that the model is not clinically validated.
+
+---
+
+## v1 (superseded): original retrain note
+
 Branch `claude/seg-retrain-227f8e`. Code: `segment.py` (commit da997e8). Machine-readable results are in
 `research_outputs/segmentation_retrain/`: `segmentation_summary.json`, `segmentation_per_image.csv`,
 the training log and the console log. The checkpoint and the overlay figures are in the git-ignored
@@ -72,4 +154,4 @@ more informative per-image number. Pooled = pixel counts summed over all scans o
 - **Hyperparameters were fixed in advance and not searched:** `pos_weight`, loss weights, learning rate, batch size, augmentation and patience. The threshold was the only tuned quantity, on val. A different reasonable configuration could do better or worse.
 - **Selection noise.** The validation set has only 2 subjects, and its inter-grader agreement is low (mean Dice 0.52). Epoch selection is therefore noisy: val pooled Dice moved between 0.77 and 0.80 from epoch 7 onwards.
 - **Not reviewed for clinical use.** The fluid mask is a research output only. It has not been assessed for any diagnostic or clinical use, and nothing here supports clinical claims.
-- **`app.py` is unchanged.** It still points at the earlier checkpoint and uses a fixed 0.5 threshold. Switching it to this checkpoint (threshold 0.80) is a separate decision.
+- **`app.py` was not switched to v1.** Doing so exposed the full-frame failure described in the erratum at the top; `app.py` now uses v2.
