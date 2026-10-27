@@ -54,9 +54,8 @@ as explain.py / app.py):
     different (non-U-Net) approach.
 
   - Grader 1 (manualFluid1) is used as ground truth. Grader 2
-    (manualFluid2) is loaded and available on every sample but not used
-    for training -- reserved for a future inter-rater agreement check,
-    not implemented here.
+    (manualFluid2) is not used for training; it is the inter-grader
+    reference reported next to the model (split_report()).
 
   - "boundary dist" in the brief's Phase 4 sign-off template is read as
     the standard image-segmentation metric -- mean symmetric surface
@@ -96,11 +95,16 @@ as explain.py / app.py):
 Usage:
     python segment.py --duke-dir data/raw/duke_dme/2015_BOE_Chiu \\
         --classifier-checkpoint artifacts/kaggle/<run>/artifacts/checkpoint_best.pt \\
-        --smoke
+        [--smoke] [--artifacts-dir artifacts/segmentation_retrain]
+
+The training/evaluation section was rewritten on 2026-10-28 after the
+research audit found the first trained model non-functional; see the
+"Train / eval" block comment and research_outputs/segmentation_retrain_report.md.
 """
 
 import argparse
 import csv
+import json
 import time
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -163,9 +167,8 @@ def detect_annotated_scans(layers1: np.ndarray) -> List[int]:
 
 def load_duke_subject(mat_path: Path) -> dict:
     """Loads one Subject_XX.mat and returns only the manually-annotated scans,
-    as parallel lists aligned by index. Grader 2's arrays are included for a
-    possible future inter-rater comparison (see module docstring) but unused
-    in training below.
+    as parallel lists aligned by index. Grader 2's arrays are used only as
+    the inter-grader reference (see module docstring), never in training.
 
     variable_names restricts scipy.io.loadmat to the 5 arrays actually used
     (images + both graders' fluid/layers). Discovered empirically while
@@ -334,6 +337,32 @@ def preprocess_pair(image_gray: np.ndarray, mask: np.ndarray, image_size: int = 
 
 
 # ---------------------------------------------------------------------------
+# Graded region
+# ---------------------------------------------------------------------------
+
+
+def graded_region(fluid_raw: np.ndarray, layers: np.ndarray) -> np.ndarray:
+    """Pixels the grader actually assessed for fluid, as a uint8 (H, W) mask.
+
+    Checked directly on all 110 annotated scans (retrain, 2026-10-28) rather
+    than assumed: manualFluid1/2 contain NO NaN on the annotated scans -- the
+    ungraded lateral margins are stored as 0, i.e. indistinguishable from
+    "graded, no fluid". The graded extent is instead recorded in
+    manualLayers: only a central band of ~500-550 of the 768 columns carries
+    boundary coordinates, the two graders' column bands are identical, and
+    zero fluid pixels from either grader fall outside that band. So graded =
+    (fluid not NaN) AND (column has any manual layer coordinate). The NaN
+    term is kept so a scan that IS NaN-marked is still handled correctly.
+    Letterbox padding is excluded downstream because the padded border of
+    this mask is 0.
+    """
+    cols = ~np.all(np.isnan(layers), axis=0)  # (W,)
+    graded = ~np.isnan(fluid_raw)
+    graded &= cols[None, :]
+    return graded.astype(np.uint8)
+
+
+# ---------------------------------------------------------------------------
 # Dataset
 # ---------------------------------------------------------------------------
 
@@ -381,60 +410,73 @@ def build_splits_duke(entries: List[dict], val_n: int = VAL_PATIENTS, test_n: in
     return train, val, test
 
 
+def load_scan(entry: dict, cache: dict) -> dict:
+    """Native-resolution arrays for one annotated scan: image, grader-1 and
+    grader-2 binary fluid masks, and the graded region (shared by both
+    graders -- see graded_region). `cache` maps mat_path -> subject dict."""
+    if entry["mat_path"] not in cache:
+        cache[entry["mat_path"]] = load_duke_subject(entry["mat_path"])
+    sample = cache[entry["mat_path"]]
+    pos = entry["pos"]
+    return {
+        "image": sample["images"][pos],
+        "gt1": binarize_fluid(sample["fluid1"][pos]),
+        "gt2": binarize_fluid(sample["fluid2"][pos]),
+        "graded": graded_region(sample["fluid1"][pos], sample["layers1"][pos])
+        & graded_region(sample["fluid2"][pos], sample["layers2"][pos]),
+    }
+
+
 class DukeFluidDataset:
     """torch.utils.data.Dataset subclassed lazily (see main()) so this module
     imports cleanly without torch installed, matching train.py's pattern of
-    keeping torch imports inside functions/__main__ where practical."""
+    keeping torch imports inside functions/__main__ where practical.
+
+    Returns (image, fluid mask, graded mask), all at IMAGE_SIZE_SEG. The
+    deterministic preprocessing (NLM denoise is the slow part) is computed
+    once per scan and cached; only the random augmentation runs per epoch."""
 
     def __init__(self, entries: List[dict], image_size: int = IMAGE_SIZE_SEG, augment: bool = False):
+        import albumentations as A
+        from albumentations.pytorch import ToTensorV2
+
         self.entries = entries
         self.image_size = image_size
         self.augment = augment
-        self._cache = {}  # mat_path -> load_duke_subject() result; ~20MB/subject, 10 subjects fits comfortably
+        subject_cache = {}
+        self._pre = []
+        for e in entries:
+            scan = load_scan(e, subject_cache)
+            rgb, mask = preprocess_pair(scan["image"], scan["gt1"], image_size)
+            _, graded = preprocess_pair(scan["image"], scan["graded"], image_size)
+            self._pre.append((rgb, mask, graded))
 
-    def _get_subject(self, mat_path: Path) -> dict:
-        if mat_path not in self._cache:
-            self._cache[mat_path] = load_duke_subject(mat_path)
-        return self._cache[mat_path]
+        norm = [A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), ToTensorV2()]
+        if augment:
+            # No vertical flip (C4). Constant-0 border so a shifted/rotated frame
+            # brings in ungraded (graded=0) pixels, never reflected fake labels.
+            self.tfm = A.Compose(
+                [
+                    A.HorizontalFlip(p=0.5),
+                    A.ShiftScaleRotate(
+                        shift_limit=0.1, scale_limit=0.1, rotate_limit=10, p=0.7,
+                        border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0,
+                    ),
+                    A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=0.5),
+                ]
+                + norm
+            )
+        else:
+            self.tfm = A.Compose(norm)
 
     def __len__(self) -> int:
         return len(self.entries)
 
     def __getitem__(self, i: int):
-        import torch
-        import albumentations as A
-        from albumentations.pytorch import ToTensorV2
-
-        e = self.entries[i]
-        sample = self._get_subject(e["mat_path"])
-        pos = e["pos"]
-        img = sample["images"][pos]
-        fluid_mask = binarize_fluid(sample["fluid1"][pos])
-
-        img_rgb, mask = preprocess_pair(img, fluid_mask, self.image_size)
-
-        if self.augment:
-            # No vertical flip (C4). Same augmentation family as the classifier's
-            # training transform, applied jointly to image+mask via albumentations.
-            tfm = A.Compose(
-                [
-                    A.HorizontalFlip(p=0.5),
-                    A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=10, p=0.7),
-                    A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-                    ToTensorV2(),
-                ]
-            )
-        else:
-            tfm = A.Compose(
-                [
-                    A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-                    ToTensorV2(),
-                ]
-            )
-        out = tfm(image=img_rgb, mask=mask)
-        image_t = out["image"]
-        mask_t = out["mask"].float().unsqueeze(0)  # (1, H, W)
-        return image_t, mask_t
+        rgb, mask, graded = self._pre[i]
+        out = self.tfm(image=rgb, masks=[mask, graded])
+        mask_t, graded_t = (m.float().unsqueeze(0) for m in out["masks"])  # (1, H, W) each
+        return out["image"], mask_t, graded_t
 
 
 # ---------------------------------------------------------------------------
@@ -532,7 +574,184 @@ def boundary_distance(pred: np.ndarray, target: np.ndarray) -> float:
 
 # ---------------------------------------------------------------------------
 # Train / eval
+#
+# Retrain (2026-10-28) after the research audit found the first run
+# non-functional (fluid predicted on ~100% of pixels, best checkpoint at
+# epoch 1). Changes, each tied to an audit finding:
+#   - loss and every metric are restricted to the graded region
+#     (graded_region(): manually graded columns, letterbox padding excluded);
+#   - class imbalance (fluid ~1% of graded pixels): BCE with a fixed
+#     pos_weight plus a soft Dice term pooled over the batch, both on graded
+#     pixels only -- fixed a priori, not tuned;
+#   - checkpoint AND probability threshold are selected jointly on val
+#     only: each epoch, val pooled Dice is computed over THRESHOLD_GRID and
+#     its maximum is the epoch's score (pos_weight shifts calibration, so a
+#     fixed 0.5 would rank epochs by calibration rather than separation);
+#     patience is long enough to get past the first epochs;
+#   - metrics are computed at native 496x768 resolution (probabilities are
+#     un-letterboxed and resized back), mean and pooled, all images and
+#     fluid-positive images only, next to all-foreground / all-background
+#     baselines and grader-2-vs-grader-1 agreement;
+#   - test is evaluated exactly once, after everything above is fixed, and
+#     the script refuses to overwrite an existing final summary.
 # ---------------------------------------------------------------------------
+
+EPOCHS_SEG_MAX = 100
+EARLY_STOP_PATIENCE_SEG = 15
+BATCH_SIZE_SEG_CPU = 4  # 66 train scans -> ~17 optimiser steps/epoch (config.BATCH_SIZE_SEG=16 gave ~5)
+LR_SEG_RETRAIN = 3e-4
+WEIGHT_DECAY_SEG = 1e-4
+BCE_POS_WEIGHT = 10.0  # fixed a priori; Dice term carries the rest of the imbalance handling
+DICE_LOSS_WEIGHT = 1.0
+THRESHOLD_GRID = [round(t, 2) for t in np.arange(0.05, 0.96, 0.05)]
+
+
+def threshold_sweep(probs: List[np.ndarray], gts: List[np.ndarray], gradeds: List[np.ndarray]) -> Tuple[float, dict]:
+    """Pooled graded-pixel Dice at every THRESHOLD_GRID value; returns
+    (best threshold, {threshold: Dice}). Ties go to the threshold nearer 0.5."""
+    ms = [m.astype(bool) for m in gradeds]
+    p_g = np.concatenate([p[m] for p, m in zip(probs, ms)])
+    g_g = np.concatenate([g[m].astype(bool) for g, m in zip(gts, ms)])
+    sweep = {}
+    for t in THRESHOLD_GRID:
+        pred = p_g > t
+        denom = pred.sum() + g_g.sum()
+        sweep[t] = float(2 * np.logical_and(pred, g_g).sum() / denom) if denom else float("nan")
+    best = max(THRESHOLD_GRID, key=lambda t: (np.nan_to_num(sweep[t], nan=-1.0), -abs(t - 0.5)))
+    return best, sweep
+
+
+def masked_seg_loss(logits, mask, graded, pos_weight: float = BCE_POS_WEIGHT, dice_weight: float = DICE_LOSS_WEIGHT):
+    """BCE(pos_weight) + soft Dice, both computed on graded pixels only.
+    Dice is pooled over the whole batch so fluid-free scans still contribute
+    false-positive penalty without a 0/0 per-image term."""
+    import torch
+    import torch.nn.functional as F
+
+    pw = torch.tensor(pos_weight, device=logits.device)
+    bce = F.binary_cross_entropy_with_logits(logits, mask, pos_weight=pw, reduction="none")
+    bce = (bce * graded).sum() / graded.sum().clamp_min(1.0)
+    prob = torch.sigmoid(logits) * graded
+    tgt = mask * graded
+    dice = 1.0 - (2.0 * (prob * tgt).sum() + 1.0) / (prob.sum() + tgt.sum() + 1.0)
+    return bce + dice_weight * dice
+
+
+def unletterbox(prob: np.ndarray, orig_hw: Tuple[int, int], size: int = IMAGE_SIZE_SEG) -> np.ndarray:
+    """Inverse of _letterbox_pair for a (size, size) probability map: crop
+    the padding back off and resize to the native (H, W) bilinearly."""
+    h, w = orig_hw
+    scale = size / max(h, w)
+    new_h, new_w = max(1, round(h * scale)), max(1, round(w * scale))
+    top, left = (size - new_h) // 2, (size - new_w) // 2
+    crop = prob[top : top + new_h, left : left + new_w]
+    return cv2.resize(crop.astype(np.float32), (w, h), interpolation=cv2.INTER_LINEAR)
+
+
+def native_eval_set(entries: List[dict]) -> List[dict]:
+    """Native-resolution ground truth for evaluation, one dict per scan."""
+    cache, out = {}, []
+    for e in entries:
+        scan = load_scan(e, cache)
+        out.append({"subject": e["subject"], "scan_idx": e["scan_idx"], **{k: scan[k] for k in ("gt1", "gt2", "graded")},
+                    "hw": scan["image"].shape[:2]})
+    return out
+
+
+def predict_native(model, ds: "DukeFluidDataset", eval_set: List[dict], device, batch_size: int = BATCH_SIZE_SEG_CPU) -> List[np.ndarray]:
+    import torch
+
+    model.eval()
+    probs = []
+    with torch.no_grad():
+        for i in range(0, len(ds), batch_size):
+            batch = torch.stack([ds[j][0] for j in range(i, min(i + batch_size, len(ds)))]).to(device)
+            probs.extend(torch.sigmoid(model(batch))[:, 0].cpu().numpy())
+    return [unletterbox(p, s["hw"]) for p, s in zip(probs, eval_set)]
+
+
+def segmentation_metrics(preds: List[np.ndarray], gts: List[np.ndarray], gradeds: List[np.ndarray]) -> dict:
+    """Dice/IoU on graded pixels only. Per-image Dice of an image with empty
+    ground truth AND empty prediction is 1 (dice_coefficient's eps
+    convention); that is why the fluid-positive-only mean is reported too.
+    Pooled = pixel counts summed over all images before the ratio."""
+    dices, ious, pos_dices, pos_ious, bdists = [], [], [], [], []
+    inter = psum = gsum = union = 0
+    pred_frac, fp_on_empty, n_empty = [], 0, 0
+    for p, g, m in zip(preds, gts, gradeds):
+        m = m.astype(bool)
+        p = p.astype(bool) & m
+        g = g.astype(bool) & m
+        d, j = dice_coefficient(p[m], g[m]), iou_score(p[m], g[m])
+        dices.append(d)
+        ious.append(j)
+        inter += int(np.logical_and(p, g).sum())
+        psum += int(p.sum())
+        gsum += int(g.sum())
+        union += int(np.logical_or(p, g).sum())
+        pred_frac.append(float(p[m].mean()))
+        if g.any():
+            pos_dices.append(d)
+            pos_ious.append(j)
+            bdists.append(boundary_distance(p, g))
+        else:
+            n_empty += 1
+            fp_on_empty += int(p.any())
+    finite_bd = [b for b in bdists if not np.isnan(b)]
+    return {
+        "n_images": len(dices),
+        "n_fluid_positive": len(pos_dices),
+        "n_empty_gt": n_empty,
+        "n_empty_gt_with_any_predicted_fluid": fp_on_empty,
+        "mean_dice": float(np.mean(dices)),
+        "mean_iou": float(np.mean(ious)),
+        "mean_dice_fluid_positive": float(np.mean(pos_dices)) if pos_dices else float("nan"),
+        "mean_iou_fluid_positive": float(np.mean(pos_ious)) if pos_ious else float("nan"),
+        "pooled_dice": float(2 * inter / (psum + gsum)) if (psum + gsum) else float("nan"),
+        "pooled_iou": float(inter / union) if union else float("nan"),
+        "mean_boundary_dist_px_fluid_positive": float(np.mean(finite_bd)) if finite_bd else float("nan"),
+        "mean_pred_frac_of_graded": float(np.mean(pred_frac)),
+        "gt_frac_of_graded_pooled": float(gsum / max(1, sum(int(m.sum()) for m in gradeds))),
+    }
+
+
+def split_report(probs: Optional[List[np.ndarray]], eval_set: List[dict], threshold: float) -> dict:
+    """Model (if probs given), both trivial baselines and inter-grader
+    agreement on one split, plus per-subject pooled Dice for the model."""
+    gts = [s["gt1"] for s in eval_set]
+    gradeds = [s["graded"] for s in eval_set]
+    out = {
+        "subjects": sorted(set(s["subject"] for s in eval_set)),
+        "baseline_all_foreground": segmentation_metrics([np.ones_like(g) for g in gts], gts, gradeds),
+        "baseline_all_background": segmentation_metrics([np.zeros_like(g) for g in gts], gts, gradeds),
+        "inter_grader_g2_vs_g1": segmentation_metrics([s["gt2"] for s in eval_set], gts, gradeds),
+    }
+    if probs is not None:
+        preds = [(p > threshold).astype(np.uint8) for p in probs]
+        out["model"] = segmentation_metrics(preds, gts, gradeds)
+        out["model_per_subject"] = {
+            subj: segmentation_metrics(*zip(*[(pr, s["gt1"], s["graded"]) for pr, s in zip(preds, eval_set) if s["subject"] == subj]))
+            for subj in out["subjects"]
+        }
+    return out
+
+
+def per_image_rows(split: str, probs: List[np.ndarray], eval_set: List[dict], threshold: float) -> List[dict]:
+    rows = []
+    for p, s in zip(probs, eval_set):
+        m = s["graded"].astype(bool)
+        pred = (p > threshold) & m
+        g1, g2 = s["gt1"].astype(bool) & m, s["gt2"].astype(bool) & m
+        rows.append({
+            "split": split, "subject": s["subject"], "scan_idx": s["scan_idx"],
+            "graded_pixels": int(m.sum()), "gt1_fluid_pixels": int(g1.sum()), "gt2_fluid_pixels": int(g2.sum()),
+            "pred_fluid_pixels": int(pred.sum()),
+            "dice_model_vs_g1": dice_coefficient(pred[m], g1[m]), "iou_model_vs_g1": iou_score(pred[m], g1[m]),
+            "dice_model_vs_g2": dice_coefficient(pred[m], g2[m]),
+            "dice_g2_vs_g1": dice_coefficient(g2[m], g1[m]),
+            "mean_prob_graded": float(p[m].mean()),
+        })
+    return rows
 
 
 def _log_epoch_row(log_path: Path, row: dict) -> None:
@@ -544,61 +763,62 @@ def _log_epoch_row(log_path: Path, row: dict) -> None:
         writer.writerow(row)
 
 
-def run_seg_epoch(model, loader, dice_loss, bce_loss, device, optimizer=None):
-    import torch
+def train_seg_epoch(model, loader, optimizer, device) -> float:
+    model.train()
+    total, n = 0.0, 0
+    for images, masks, graded in loader:
+        images, masks, graded = images.to(device), masks.to(device), graded.to(device)
+        optimizer.zero_grad()
+        loss = masked_seg_loss(model(images), masks, graded)
+        loss.backward()
+        optimizer.step()
+        total += loss.item() * images.size(0)
+        n += images.size(0)
+    return total / max(1, n)
 
-    train_mode = optimizer is not None
-    model.train(train_mode)
 
-    total_loss, n = 0.0, 0
-    dices, ious, bdists = [], [], []
+def save_examples_figure(out_path: Path, ds: "DukeFluidDataset", probs, eval_set, threshold: float, n: int = 4) -> None:
+    """Native-res overlays for the n scans with the most grader-1 fluid
+    (plus their grader-2 mask) -- qualitative only."""
+    import matplotlib
 
-    torch.set_grad_enabled(train_mode)
-    try:
-        for images, masks in loader:
-            images, masks = images.to(device), masks.to(device)
-            if train_mode:
-                optimizer.zero_grad()
-            logits = model(images)
-            loss = 0.5 * dice_loss(logits, masks) + 0.5 * bce_loss(logits, masks)
-            if train_mode:
-                loss.backward()
-                optimizer.step()
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
 
-            batch_n = images.size(0)
-            total_loss += loss.item() * batch_n
-            n += batch_n
-
-            preds = (torch.sigmoid(logits) > 0.5).float().detach().cpu().numpy()
-            targets = masks.detach().cpu().numpy()
-            for p, t in zip(preds, targets):
-                p2d, t2d = p[0], t[0]
-                dices.append(dice_coefficient(p2d, t2d))
-                ious.append(iou_score(p2d, t2d))
-                bdists.append(boundary_distance(p2d, t2d))
-    finally:
-        torch.set_grad_enabled(True)
-
-    avg_loss = total_loss / max(1, n)
-    mean_dice = float(np.mean(dices)) if dices else float("nan")
-    mean_iou = float(np.mean(ious)) if ious else float("nan")
-    finite_bdists = [d for d in bdists if not np.isnan(d)]
-    mean_bdist = float(np.mean(finite_bdists)) if finite_bdists else float("nan")
-    return avg_loss, mean_dice, mean_iou, mean_bdist
+    order = sorted(range(len(eval_set)), key=lambda i: -int((eval_set[i]["gt1"] & eval_set[i]["graded"]).sum()))[:n]
+    cache = {}
+    fig, axes = plt.subplots(len(order), 3, figsize=(15, 3.2 * len(order)))
+    for row, i in enumerate(order):
+        s = eval_set[i]
+        img = load_scan(ds.entries[i], cache)["image"]
+        pred = ((probs[i] > threshold) & s["graded"].astype(bool)).astype(np.uint8)
+        for col, (mask, title) in enumerate(((s["gt1"], "grader 1"), (s["gt2"], "grader 2"), (pred, f"model (t={threshold})"))):
+            axes[row, col].imshow(draw_fluid_overlay(img, mask))
+            axes[row, col].set_title(f"Subject_{s['subject']} scan {s['scan_idx']} -- {title}", fontsize=9)
+            axes[row, col].axis("off")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=110)
+    plt.close(fig)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Phase 4 (extended, E1): U-Net fluid segmentation, Duke DME dataset.")
     parser.add_argument("--duke-dir", type=Path, required=True, help="Path to the extracted 2015_BOE_Chiu folder (10 Subject_XX.mat files).")
     parser.add_argument("--classifier-checkpoint", type=Path, required=True, help="Phase 2 checkpoint_best.pt to initialise the encoder from.")
-    parser.add_argument("--artifacts-dir", type=Path, default=config.ARTIFACTS_DIR / "segmentation")
+    parser.add_argument("--artifacts-dir", type=Path, default=config.ARTIFACTS_DIR / "segmentation_retrain")
     parser.add_argument("--verify-only", action="store_true", help="Only generate the rasterization verification figure and exit -- no torch/GPU needed.")
-    parser.add_argument("--smoke", action="store_true", help="Train for 1 epoch, log/checkpoint through the real path, to sanity-check before a full Kaggle push.")
+    parser.add_argument("--smoke", action="store_true", help="2 epochs through the real path (training, val selection, threshold choice); never touches test.")
+    parser.add_argument("--max-epochs", type=int, default=EPOCHS_SEG_MAX)
     parser.add_argument("--num-workers", type=int, default=0)
     args = parser.parse_args()
 
     set_seed(config.SEED)
+    if args.smoke:
+        args.artifacts_dir = args.artifacts_dir / "smoke"
     args.artifacts_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = args.artifacts_dir / "segmentation_summary.json"
+    if summary_path.exists() and not args.smoke:
+        raise SystemExit(f"{summary_path} exists: test has already been evaluated for this run. Use a new --artifacts-dir.")
 
     # Mandatory gate, per the brief: verify rasterization BEFORE anything else.
     verify_rasterization(args.duke_dir, args.artifacts_dir)
@@ -608,7 +828,6 @@ def main():
 
     import torch
     from torch.utils.data import DataLoader
-    import segmentation_models_pytorch as smp
     from train import save_checkpoint, load_checkpoint
 
     entries = build_duke_index(args.duke_dir)
@@ -616,95 +835,115 @@ def main():
 
     train_ds = DukeFluidDataset(train_entries, augment=True)
     val_ds = DukeFluidDataset(val_entries, augment=False)
-    test_ds = DukeFluidDataset(test_entries, augment=False)
-
-    train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE_SEG, shuffle=True, num_workers=args.num_workers)
-    val_loader = DataLoader(val_ds, batch_size=config.BATCH_SIZE_SEG, shuffle=False, num_workers=args.num_workers)
-    test_loader = DataLoader(test_ds, batch_size=config.BATCH_SIZE_SEG, shuffle=False, num_workers=args.num_workers)
+    val_set = native_eval_set(val_entries)
+    gen = torch.Generator().manual_seed(config.SEED)
+    train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE_SEG_CPU, shuffle=True, num_workers=args.num_workers, generator=gen)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = build_seg_model().to(device)
-    transfer_encoder_weights(model, args.classifier_checkpoint)
+    matched, total_keys = transfer_encoder_weights(model, args.classifier_checkpoint)
 
-    dice_loss = smp.losses.DiceLoss(mode="binary", from_logits=True)
-    bce_loss = torch.nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.LR_SEG)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LR_SEG_RETRAIN, weight_decay=WEIGHT_DECAY_SEG)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=5)
 
-    epochs_total = 1 if args.smoke else EPOCHS_SEG
+    epochs_total = 2 if args.smoke else args.max_epochs
     best_ckpt_path = args.artifacts_dir / "checkpoint_best.pt"
-    last_ckpt_path = args.artifacts_dir / "checkpoint_last.pt"
     log_path = args.artifacts_dir / "segmentation_training_log.csv"
+    if log_path.exists():
+        log_path.unlink()
 
-    best_val_dice, best_epoch, epochs_no_improve = -1.0, 0, 0
+    best_val, best_epoch, epochs_no_improve = -1.0, 0, 0
     for epoch in range(1, epochs_total + 1):
         t0 = time.time()
-        train_loss, train_dice, train_iou, _ = run_seg_epoch(model, train_loader, dice_loss, bce_loss, device, optimizer=optimizer)
-        val_loss, val_dice, val_iou, val_bdist = run_seg_epoch(model, val_loader, dice_loss, bce_loss, device, optimizer=None)
+        train_loss = train_seg_epoch(model, train_loader, optimizer, device)
+        val_probs = predict_native(model, val_ds, val_set, device)
+        val_gts, val_gradeds = [s["gt1"] for s in val_set], [s["graded"] for s in val_set]
+        epoch_t, epoch_sweep = threshold_sweep(val_probs, val_gts, val_gradeds)
+        vm = segmentation_metrics([(p > epoch_t).astype(np.uint8) for p in val_probs], val_gts, val_gradeds)
+        val_score = np.nan_to_num(epoch_sweep[epoch_t], nan=0.0)
+        scheduler.step(val_score)
         epoch_time = time.time() - t0
 
-        improved = val_dice > best_val_dice
+        improved = val_score > best_val
         if improved:
-            best_val_dice, best_epoch, epochs_no_improve = val_dice, epoch, 0
+            best_val, best_epoch, epochs_no_improve = val_score, epoch, 0
+            save_checkpoint(best_ckpt_path, {
+                "model_state_dict": model.state_dict(), "model_name": MODEL_NAME_SEG, "epoch": epoch,
+                "val_pooled_dice": val_score, "val_threshold": epoch_t,
+                "selection": "max over threshold grid of val pooled Dice (graded pixels, native res)",
+            })
         else:
             epochs_no_improve += 1
 
-        _log_epoch_row(
-            log_path,
-            {
-                "epoch": epoch,
-                "train_loss": train_loss,
-                "train_dice": train_dice,
-                "train_iou": train_iou,
-                "val_loss": val_loss,
-                "val_dice": val_dice,
-                "val_iou": val_iou,
-                "val_boundary_dist_px": val_bdist,
-                "epoch_time_sec": epoch_time,
-            },
-        )
-
-        if improved:
-            save_checkpoint(
-                best_ckpt_path,
-                {
-                    "model_state_dict": model.state_dict(),
-                    "model_name": MODEL_NAME_SEG,
-                    "epoch": epoch,
-                    "val_dice": val_dice,
-                    "val_iou": val_iou,
-                },
-            )
-
-        save_checkpoint(
-            last_ckpt_path,
-            {"model_state_dict": model.state_dict(), "model_name": MODEL_NAME_SEG, "epoch": epoch, "best_val_dice": best_val_dice, "best_epoch": best_epoch},
-        )
-
+        _log_epoch_row(log_path, {
+            "epoch": epoch, "lr": optimizer.param_groups[0]["lr"], "train_loss": train_loss,
+            "val_best_threshold": epoch_t, "val_pooled_dice_at_0.5": epoch_sweep[0.5], "val_pooled_dice": vm["pooled_dice"], "val_mean_dice_fluid_positive": vm["mean_dice_fluid_positive"],
+            "val_mean_dice": vm["mean_dice"], "val_pooled_iou": vm["pooled_iou"],
+            "val_mean_pred_frac_of_graded": vm["mean_pred_frac_of_graded"], "epoch_time_sec": epoch_time,
+        })
         print(
-            f"[segment epoch {epoch}/{epochs_total}] train_loss={train_loss:.4f} train_dice={train_dice:.4f} "
-            f"val_loss={val_loss:.4f} val_dice={val_dice:.4f} val_iou={val_iou:.4f} "
-            f"{'*best*' if improved else ''} ({epoch_time:.1f}s)"
+            f"[segment epoch {epoch}/{epochs_total}] train_loss={train_loss:.4f} val_pooled_dice={vm['pooled_dice']:.4f} (t={epoch_t}) "
+            f"val_dice_fluid+={vm['mean_dice_fluid_positive']:.4f} pred_frac={vm['mean_pred_frac_of_graded']:.4f} "
+            f"{'*best*' if improved else ''} ({epoch_time:.1f}s)", flush=True,
         )
-
-        if not args.smoke and epochs_no_improve >= config.EARLY_STOP_PATIENCE:
-            print(f"[segment] early stopping: no val_dice improvement in {config.EARLY_STOP_PATIENCE} epochs")
+        if epochs_no_improve >= EARLY_STOP_PATIENCE_SEG:
+            print(f"[segment] early stopping: no val pooled Dice improvement in {EARLY_STOP_PATIENCE_SEG} epochs")
             break
+    last_epoch = epoch
 
-    # Final val + test metrics from the BEST checkpoint, not the last epoch's weights.
-    best_ckpt = load_checkpoint(best_ckpt_path, map_location=device)
-    model.load_state_dict(best_ckpt["model_state_dict"])
-    _, final_val_dice, final_val_iou, final_val_bdist = run_seg_epoch(model, val_loader, dice_loss, bce_loss, device, optimizer=None)
-    _, final_test_dice, final_test_iou, final_test_bdist = run_seg_epoch(model, test_loader, dice_loss, bce_loss, device, optimizer=None)
+    # Best checkpoint; recompute its val sweep (identical to the selection-time one).
+    model.load_state_dict(load_checkpoint(best_ckpt_path, map_location=device)["model_state_dict"])
+    val_probs = predict_native(model, val_ds, val_set, device)
+    gts, gradeds = [s["gt1"] for s in val_set], [s["graded"] for s in val_set]
+    threshold, sweep = threshold_sweep(val_probs, gts, gradeds)
+    print(f"[segment] best epoch {best_epoch}; val threshold sweep (pooled Dice): " + ", ".join(f"{t}:{d:.3f}" for t, d in sweep.items()))
+    print(f"[segment] chosen threshold (val only): {threshold}")
 
-    verdict = "ship" if final_val_dice >= 0.6 else "future work"
+    summary = {
+        "run": "segmentation retrain (smoke)" if args.smoke else "segmentation retrain",
+        "encoder_init": str(args.classifier_checkpoint), "encoder_keys_matched": f"{matched}/{total_keys}",
+        "split_seed": config.SEED, "best_epoch": best_epoch, "last_epoch": last_epoch,
+        "selection": "epoch and threshold jointly: max over threshold grid of val pooled Dice (graded pixels, native 496x768)",
+        "threshold_grid": THRESHOLD_GRID, "val_threshold_sweep_pooled_dice": {str(t): d for t, d in sweep.items()},
+        "chosen_threshold": threshold,
+        "hyperparameters": {"batch_size": BATCH_SIZE_SEG_CPU, "lr": LR_SEG_RETRAIN, "weight_decay": WEIGHT_DECAY_SEG,
+                            "bce_pos_weight": BCE_POS_WEIGHT, "dice_loss_weight": DICE_LOSS_WEIGHT,
+                            "max_epochs": epochs_total, "early_stop_patience": EARLY_STOP_PATIENCE_SEG, "image_size": IMAGE_SIZE_SEG},
+        "val": split_report(val_probs, val_set, threshold),
+        "val_at_0.5": split_report(val_probs, val_set, 0.5)["model"],
+    }
+    rows = per_image_rows("val", val_probs, val_set, threshold)
 
-    print("\nPHASE 4 COMPLETE" if verdict == "ship" else "\nPHASE 4 TIMEBOXED")
-    print(f"Duke: {len(entries)} scans rasterized, overlay verified: yes")
-    print("Encoder transfer: see 'encoder transfer' log line above")
-    print(f"Val Dice {final_val_dice:.4f} IoU {final_val_iou:.4f} boundary dist {final_val_bdist:.2f} px | "
-          f"Test Dice {final_test_dice:.4f} IoU {final_test_iou:.4f} boundary dist {final_test_bdist:.2f} px")
-    print(f"Verdict: {verdict}")
-    print("Blocking questions: none")
+    if args.smoke:
+        print("[segment] --smoke: test split NOT evaluated.")
+    else:
+        # Single test evaluation -- everything above is frozen at this point.
+        test_ds = DukeFluidDataset(test_entries, augment=False)
+        test_set = native_eval_set(test_entries)
+        test_probs = predict_native(model, test_ds, test_set, device)
+        summary["test"] = split_report(test_probs, test_set, threshold)
+        summary["test_at_0.5"] = split_report(test_probs, test_set, 0.5)["model"]
+        rows += per_image_rows("test", test_probs, test_set, threshold)
+        save_examples_figure(args.artifacts_dir / "segmentation_test_examples.png", test_ds, test_probs, test_set, threshold)
+    save_examples_figure(args.artifacts_dir / "segmentation_val_examples.png", val_ds, val_probs, val_set, threshold)
+
+    with open(args.artifacts_dir / "segmentation_per_image.csv", "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+    with open(summary_path, "w") as f:
+        json.dump(summary, f, indent=2, default=float)
+
+    for split in ("val", "test"):
+        if split not in summary:
+            continue
+        r = summary[split]
+        print(f"\n[{split}] subjects {r['subjects']}")
+        for name in ("model", "baseline_all_foreground", "baseline_all_background", "inter_grader_g2_vs_g1"):
+            m = r[name]
+            print(f"  {name:26s} pooled Dice {m['pooled_dice']:.4f}  mean Dice {m['mean_dice']:.4f}  "
+                  f"mean Dice fluid+ {m['mean_dice_fluid_positive']:.4f}  pooled IoU {m['pooled_iou']:.4f}")
+    print(f"\n[segment] summary written: {summary_path}")
 
 
 if __name__ == "__main__":
