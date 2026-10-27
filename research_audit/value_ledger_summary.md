@@ -1,6 +1,6 @@
 # Per-value validation ledger (script 16)
 
-Every number shown in the figures, Tables 2, 3 and 6, the report and the checklist, and every published value of the five papers: **7,936 values**. One row per value in `research_audit/value_ledger.csv` (value shown, expected value, its source, status).
+Every number shown in the figures, Tables 2, 3 and 6, the report and the checklist, and every published value of the five papers: **7,946 values**. One row per value in `research_audit/value_ledger.csv` (value shown, expected value, its source, status).
 
 - **RECOMPUTED**: recalculated here from per-image predictions or console logs, independently of the pipeline, and equal.
 - **TRACED**: equal to the stated source file; re-running would only repeat that step (seeded bootstraps, segmentation inference, values extracted from a paper).
@@ -20,10 +20,10 @@ Every number shown in the figures, Tables 2, 3 and 6, the report and the checkli
 | Table 3 | 15 | 240 | 0 | 255 |
 | Table 6 | 120 | 33 | 0 | 153 |
 | Report §8.1 table | 12 | 25 | 0 | 37 |
-| research_results_report.md | 0 | 404 | 0 | 404 |
-| final_audit_checklist.md | 0 | 24 | 0 | 24 |
+| research_results_report.md | 0 | 412 | 0 | 412 |
+| final_audit_checklist.md | 0 | 26 | 0 | 26 |
 | Published value | 0 | 0 | 139 | 139 |
-| **All** | **6,677** | **1,120** | **139** | **7,936** |
+| **All** | **6,677** | **1,130** | **139** | **7,946** |
 
 ## Values needing attention
 

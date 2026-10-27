@@ -317,32 +317,38 @@ Every pair differs in data, population, device, label definition and often evalu
 
 ### 10.2 Retrained model (new analysis, separate session) [N]
 
-After this audit, the U-Net was retrained in a separate session (branch `claude/seg-retrain-227f8e`, merged into `main`; code `da997e8`, results `28e89f8`). Full details are in `research_outputs/segmentation_retrain_report.md`, with machine-readable results in `research_outputs/segmentation_retrain/`. The checkpoint is git-ignored at `artifacts/segmentation_retrain/checkpoint_best.pt` (sha256 prefix `d8c076af6fdb7cb6`). The original checkpoint was not modified.
+After this audit, the U-Net was retrained in a separate session (branch `claude/seg-retrain-227f8e`). Full details, including an erratum, are in `research_outputs/segmentation_retrain_report.md`. The original checkpoint was not modified.
 
-- **What changed:**
-  - The loss and all metrics use graded pixels only (the layer band of §10.1).
+**There were two retrains. v2 is the current model; v1 is superseded.**
+
+- **v1 (superseded; code `da997e8`, results in `research_outputs/segmentation_retrain/`).** The loss masked out the letterbox padding and the ungraded side margins. On the graded band its test pooled Dice was 0.706 (fluid-positive mean 0.633). On a whole frame, however, it predicted fluid on about 40% of the ungraded margins and 94% of the padding (val subjects), so it is not usable in `app.py`. Its graded-band numbers are correct as stated but describe a model that is not used.
+- **v2 (current; code `65d4b78`, merged as `7f8fe26`; results in `research_outputs/segmentation_retrain_v2/`).** The loss covers the whole frame, so padding and ungraded margins count as background. This accepts some label noise, because any unmarked fluid in the margins is learned as background. The checkpoint is git-ignored at `artifacts/segmentation_retrain_v2/checkpoint_best.pt`. `app.py` uses it at threshold 0.95.
+
+- **What is the same in both:**
+  - Metrics use graded pixels only (the layer band of §10.1), at native 496×768 resolution.
   - The loss adds BCE with `pos_weight` 10 plus a soft Dice term, fixed in advance.
-  - The epoch and the probability threshold were selected jointly on validation only: epoch 17 of 32, threshold 0.80.
+  - The epoch and the probability threshold are selected jointly on validation only. v2: epoch 16 of 31, threshold 0.95.
   - All-foreground and all-background baselines are reported.
-  - Metrics are computed at native 496×768 resolution.
   - Same patient split as before (seed 42; test subjects 06 and 07).
-- **Test results (22 scans, 14 with fluid), evaluated once:**
+- **Test results, v2 (22 scans, 14 with fluid):**
 
 | | Pooled Dice | Mean Dice, fluid-positive scans |
 |---|---|---|
-| Retrained model (t = 0.80) | **0.706** | **0.633** |
+| Retrained model v2 (t = 0.95) | **0.638** | **0.545** |
 | Grader 2 vs grader 1 | 0.694 | 0.615 |
 | All-foreground baseline | 0.020 | 0.031 |
 | All-background baseline | 0.000 | 0.000 |
 
-- Validation: pooled Dice 0.796, fluid-positive mean 0.595.
-- **Audit check [R]:** pooled, mean and fluid-positive Dice for both splits were recomputed from the committed per-image rows (`segmentation_per_image.csv`) and match the summary JSON to four decimals. Inference was not rerun by the audit.
-- **Interpretation:** on these two held-out subjects, agreement with grader 1 is about the same as the human inter-grader agreement. It is far above the trivial baselines, so the collapse of §10.1 is fixed.
+- Validation (v2): pooled Dice 0.789, fluid-positive mean 0.529.
+- **Whole-frame check (v2):** 0.0% predicted fluid in the ungraded margins and in the padding on both val and test, and no fluid-free scan with any predicted fluid (0/5 val, 0/8 test).
+- **Threshold at the grid edge:** 0.95 is the top of the pre-specified grid, and val pooled Dice was still rising there (0.783 at 0.90). The grid was not extended.
+- **Test-set reuse, disclosed:** the two test subjects have now scored two models (v1 and v2). The retrain was triggered by v1's whole-frame behaviour, which was equally visible on val, not by any test Dice, and nothing in v2 was tuned on test. Even so, the test split is no longer strictly untouched.
+- **Audit check [R]:** every value in both summary JSONs that can be derived from the committed per-image rows (counts, mean, pooled and fluid-positive Dice and IoU, baselines, inter-grader values, per-subject pooled Dice, the threshold choice) was recomputed and matches (`research_audit/value_ledger_project.csv`). Inference was not rerun by the audit; boundary distances need the masks and are taken from the source.
+- **Interpretation:** v2 is far above the trivial baselines, so the collapse of §10.1 is fixed, and it no longer predicts fluid outside the graded band. On these two test subjects its agreement with grader 1 is **below** the human inter-grader agreement (pooled Dice 0.638 vs 0.694).
 - **Limits:**
-  - The test set is two subjects and 22 scans. Per-subject pooled Dice is 0.694 and 0.797, and subject 07 has only 4 fluid-positive scans.
+  - The test set is two subjects and 22 scans. Per-subject pooled Dice is 0.612 (subject 06) and 0.799 (subject 07), and subject 07 has only 4 fluid-positive scans.
   - One test scan with a 354-pixel grader-1 region scores Dice 0.
-  - One of eight fluid-free test scans gets a small false positive (196 pixels).
-  - Mean boundary distance on test is 26.9 pixels, against 5.7 between graders.
+  - Mean boundary distance on test is 7.8 pixels, against 5.7 between graders.
   - All data are from one public Spectralis dataset (Duke 2015), with no external segmentation test.
   - Inter-grader values differ slightly from §10.1 (e.g. mean Dice 0.755 vs 0.758) because the retrain scores at native resolution, not the 320×320 letterbox.
 
@@ -418,7 +424,7 @@ Comparison with the five papers: none reports learning curves (full texts search
 - Per-image outputs were not saved originally; the reconstructed outputs come from a different software stack (agreement with every stored aggregate was confirmed).
 - The audited B0 run folder's log is empty; its exclusion of test patients is verified through an identical-weights run whose log survives (`20260920T095427Z`). The B3 per-epoch log is a console reconstruction without accuracy.
 - Labels come from the public dataset folders. Kermany "DME" vs "NORMAL" is a different label definition from clinically graded DME in diabetic cohorts, and negatives exclude other pathology.
-- The original segmentation checkpoint is non-functional (§10.1). The retrained model (§10.2) matches human inter-grader agreement, but on only two test subjects (22 scans) from one public dataset; boundary accuracy is worse than between graders, and there is no external test.
+- The original segmentation checkpoint is non-functional (§10.1). The retrained model in use (v2, §10.2) is far above trivial baselines but below human inter-grader agreement (test pooled Dice 0.638 vs 0.694), on only two test subjects (22 scans) that have now scored two models, from one public dataset; boundary accuracy is worse than between graders, and there is no external test.
 - The single B-scan design cannot assess centre involvement.
 
 ## 16. Reproducibility
@@ -493,7 +499,7 @@ python research_outputs/scripts/13_external_validation.py
 1. ~~Rebuild the training-time split with scikit-learn 1.4.2 and refit the threshold and temperature.~~ **Done** (§7.2, scripts 11–12). `requirements.txt` now pins `scikit-learn==1.4.2`, and `train.py` writes `split_manifest.csv` (path, label, patient, split, scikit-learn version) at the start of every run.
 2. ~~Evaluate on an external DME dataset from a different site or device~~ **Partly done** (§7.4: OCTDL, Duke 2015). Duke Srinivasan 2014 was added later (§7.4). Remaining: a clinically graded diabetic cohort, and a volume aggregation or foveal slice-selection rule fixed on separate data. The Isfahan MISP Basel set (swept-source OCT, 40 DME / 50 healthy volumes) was identified but not downloaded.
 3. ~~Save per-image predictions in `evaluate.py` for every future run.~~ **Done:** `evaluate.py` writes `predictions.csv` (validation and test: path, patient, label, both logits, raw and calibrated P(DME)) next to `metrics.json`. Existing checkpoints and results were not rerun.
-4. ~~Re-train the U-Net with ungraded pixels masked out of the loss and metric, a positive-class weight, and a sanity check against all-foreground and all-background baselines.~~ **Done** (§10.2): test pooled Dice 0.706, against 0.694 between graders. Remaining: evaluate on more subjects and on an external segmentation set (e.g. RETOUCH), and check boundary accuracy.
+4. ~~Re-train the U-Net with ungraded pixels masked out of the loss and metric, a positive-class weight, and a sanity check against all-foreground and all-background baselines.~~ **Done** (§10.2): the current model (v2, whole-frame loss) reaches test pooled Dice 0.638, against 0.694 between graders; the first retrain (v1, 0.706) was superseded because it predicted fluid outside the graded band. Remaining: evaluate on more subjects and on an external segmentation set (e.g. RETOUCH), and check boundary accuracy.
 5. If volumes become available, evaluate at the volume level to allow category-A/B comparison with Tang 2021.
 
 ## 19. References

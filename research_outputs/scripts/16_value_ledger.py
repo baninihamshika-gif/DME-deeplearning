@@ -392,7 +392,7 @@ def main():
     for (m, s), e in M.items():
         for k in ("accuracy", "sensitivity", "specificity", "precision", "f1", "auroc", "prauc", "brier"):
             add(e[k], f"recomputed {m} {s} {k}")
-    files = sorted(glob.glob(str(DATA / "*.csv")) + glob.glob(str(REPO / "research_outputs/segmentation_retrain/*.csv")) + [str(AUDIT / "literature_extraction.csv")] + glob.glob(str(TAB / "*.csv")))
+    files = sorted(glob.glob(str(DATA / "*.csv")) + glob.glob(str(REPO / "research_outputs/segmentation_retrain/*.csv")) + glob.glob(str(REPO / "research_outputs/segmentation_retrain_v2/*.csv")) + [str(AUDIT / "literature_extraction.csv")] + glob.glob(str(TAB / "*.csv")))
     for f in files:
         d = pd.read_csv(f, dtype=str, low_memory=False)
         if len(d) > 20000:
@@ -410,7 +410,7 @@ def main():
                 walk(v, path)
         else:
             add(o, path)
-    for f in glob.glob(str(DATA / "*.json")) + glob.glob(str(REPO / "research_outputs/segmentation_retrain/*.json")):
+    for f in glob.glob(str(DATA / "*.json")) + glob.glob(str(REPO / "research_outputs/segmentation_retrain/*.json")) + glob.glob(str(REPO / "research_outputs/segmentation_retrain_v2/*.json")):
         try:
             walk(json.load(open(f)), Path(f).name)
         except (ValueError, OSError):
