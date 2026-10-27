@@ -1,0 +1,118 @@
+{
+  "protocol": "* Scans: the 110 manually graded Duke 2015 B-scans; only scans with\n    grader-1 fluid in the graded band are scored.\n  * Each scan goes through utils.preprocess_image exactly as app.py does;\n    the fluid mask and the graded band are moved by the same flattening\n    shifts and letterbox (flatten_retina(source_valid=...)), so mask and\n    heatmap share pixel coordinates.\n  * CAM explains the DME class (all scans are DME); heatmaps are masked to\n    real scan pixels as in app.py (mask_cam_to_image).\n  * Metrics, on real scan pixels inside the graded band (fluid outside the\n    band is unlabelled):\n      - pixel AUROC: CAM value as a score for fluid vs non-fluid pixels;\n      - pointing game: CAM peak within 10 px of grader-1 fluid;\n      - mass in fluid: share of CAM mass on fluid pixels (fluid is ~2% of\n        the band, so a uniform map would score ~0.02).\n  * Selection: highest mean pixel AUROC on subjects 01-05 (pointing game\n    breaks ties); subjects 06-10 are reported for confirmation only.\n  * Sanity: explain.py's randomisation check (classifier re-initialised,\n    mean Pearson correlation original vs randomised must be < 0.5) on the\n    confirmation subjects for every variant.",
+  "chosen_variant": "C GradCAM blocks[5] (10x10) DME-Normal",
+  "results": {
+    "confirmation_06-10": {
+      "A GradCAM conv_head DME-logit (current app)": {
+        "n_scans": 38,
+        "auroc": 0.942831903126801,
+        "pointing": 0.5526315789473685,
+        "mass_in_fluid": 0.04232908034157988,
+        "fluid_frac": 0.013026244244411572
+      },
+      "B GradCAM conv_head DME-Normal": {
+        "n_scans": 38,
+        "auroc": 0.9468568499374136,
+        "pointing": 0.6578947368421053,
+        "mass_in_fluid": 0.03940549315915345,
+        "fluid_frac": 0.013026244244411572
+      },
+      "C GradCAM blocks[5] (10x10) DME-Normal": {
+        "n_scans": 38,
+        "auroc": 0.9382679411897117,
+        "pointing": 0.6578947368421053,
+        "mass_in_fluid": 0.05044888685102036,
+        "fluid_frac": 0.013026244244411572
+      },
+      "D GradCAM blocks[4] (19x19) DME-Normal": {
+        "n_scans": 38,
+        "auroc": 0.789075795981734,
+        "pointing": 0.23684210526315788,
+        "mass_in_fluid": 0.03207669091582494,
+        "fluid_frac": 0.013026244244411572
+      },
+      "E LayerCAM blocks[4] (19x19) DME-Normal": {
+        "n_scans": 38,
+        "auroc": 0.840691626631771,
+        "pointing": 0.8157894736842105,
+        "mass_in_fluid": 0.06193402852850819,
+        "fluid_frac": 0.013026244244411572
+      },
+      "F LayerCAM blocks[3] (19x19) DME-Normal": {
+        "n_scans": 38,
+        "auroc": 0.8621095598331597,
+        "pointing": 0.8421052631578947,
+        "mass_in_fluid": 0.05377247385484608,
+        "fluid_frac": 0.013026244244411572
+      },
+      "G LayerCAM blocks[2] (38x38) DME-Normal": {
+        "n_scans": 38,
+        "auroc": 0.8254432606509404,
+        "pointing": 0.7368421052631579,
+        "mass_in_fluid": 0.05507483398296723,
+        "fluid_frac": 0.013026244244411572
+      }
+    },
+    "selection_01-05": {
+      "A GradCAM conv_head DME-logit (current app)": {
+        "n_scans": 40,
+        "auroc": 0.9228817596364018,
+        "pointing": 0.6,
+        "mass_in_fluid": 0.06207648097770289,
+        "fluid_frac": 0.02213312738151352
+      },
+      "B GradCAM conv_head DME-Normal": {
+        "n_scans": 40,
+        "auroc": 0.9303610329814095,
+        "pointing": 0.575,
+        "mass_in_fluid": 0.0592317523463862,
+        "fluid_frac": 0.02213312738151352
+      },
+      "C GradCAM blocks[5] (10x10) DME-Normal": {
+        "n_scans": 40,
+        "auroc": 0.9432949421399043,
+        "pointing": 0.625,
+        "mass_in_fluid": 0.06982420389540493,
+        "fluid_frac": 0.02213312738151352
+      },
+      "D GradCAM blocks[4] (19x19) DME-Normal": {
+        "n_scans": 40,
+        "auroc": 0.7294334637208908,
+        "pointing": 0.35,
+        "mass_in_fluid": 0.036251994426129384,
+        "fluid_frac": 0.02213312738151352
+      },
+      "E LayerCAM blocks[4] (19x19) DME-Normal": {
+        "n_scans": 40,
+        "auroc": 0.7953254605532837,
+        "pointing": 0.75,
+        "mass_in_fluid": 0.06633706857683137,
+        "fluid_frac": 0.02213312738151352
+      },
+      "F LayerCAM blocks[3] (19x19) DME-Normal": {
+        "n_scans": 40,
+        "auroc": 0.7994635477752567,
+        "pointing": 0.825,
+        "mass_in_fluid": 0.06857308784965425,
+        "fluid_frac": 0.02213312738151352
+      },
+      "G LayerCAM blocks[2] (38x38) DME-Normal": {
+        "n_scans": 40,
+        "auroc": 0.7391468811970275,
+        "pointing": 0.625,
+        "mass_in_fluid": 0.057711023231968285,
+        "fluid_frac": 0.02213312738151352
+      }
+    }
+  },
+  "randomisation_mean_corr_confirmation": {
+    "A GradCAM conv_head DME-logit (current app)": -0.02862014261263838,
+    "B GradCAM conv_head DME-Normal": 0.09902325749680477,
+    "C GradCAM blocks[5] (10x10) DME-Normal": 0.3610402719170419,
+    "D GradCAM blocks[4] (19x19) DME-Normal": 0.2899890303536486,
+    "E LayerCAM blocks[4] (19x19) DME-Normal": 0.3596264221548248,
+    "F LayerCAM blocks[3] (19x19) DME-Normal": 0.46608200878742806,
+    "G LayerCAM blocks[2] (38x38) DME-Normal": 0.4868912961423973
+  },
+  "randomisation_threshold": 0.5
+}

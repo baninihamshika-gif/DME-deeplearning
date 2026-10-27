@@ -24,14 +24,17 @@ RANDOMIZATION_CORRELATION_THRESHOLD docstring for the same pattern):
     the brief -- easy to change, always disclosed here rather than left
     implicit in the code.
 
-  - Grad-CAM (reused directly from explain.py's generate_cam) targets
-    model.conv_head, which exists on the EfficientNet family this
-    project's primary checkpoint uses, but not on every architecture this
-    codebase can train (e.g. resnet50, Phase 3g baseline, has no
-    conv_head). This app is built to serve the signed-off primary
-    checkpoint; if a checkpoint without conv_head is loaded, Grad-CAM is
-    disabled with an explicit UI message instead of crashing or faking a
-    heatmap.
+  - Grad-CAM (generate_app_cam) targets model.blocks[5], the last 10x10
+    EfficientNet stage before blocks[6]/conv_head, and explains the logit
+    DIFFERENCE between the predicted and the other class. Chosen by
+    research_outputs/scripts/gradcam_localisation_duke.py against Duke 2015
+    manual fluid masks (external to training), with the selection rule
+    fixed beforehand (pixel AUROC on subjects 01-05, confirmed on 06-10)
+    and explain.py's randomisation check passed (mean corr 0.36 < 0.5).
+    explain.py's offline grid keeps its own conv_head setting. The
+    EfficientNet family has `blocks`; a checkpoint without it (e.g.
+    resnet50, Phase 3g baseline) gets Grad-CAM disabled with an explicit UI
+    message instead of a crash or a faked heatmap.
 
   - At deployment the true label is unknown (unlike explain.py's offline
     grid, which explains the TRUE class because ground truth is known from
@@ -161,7 +164,7 @@ def load_model(checkpoint_path: Path):
             "first, then relaunch the app."
         )
 
-    gradcam_available = hasattr(model, "conv_head")
+    gradcam_available = hasattr(model, "blocks") and len(model.blocks) > GRADCAM_BLOCK
     print(
         f"[app] model={model_name} device={device} threshold={threshold:.4f} "
         f"temperature={temperature:.4f} gradcam_available={gradcam_available}"
@@ -282,12 +285,36 @@ def draw_fluid_overlay_disclaimed(image_gray: np.ndarray, fluid_mask: np.ndarray
     return out.astype(np.uint8)
 
 
+GRADCAM_BLOCK = 5  # model.blocks[5]: 10x10 at 300px; see module docstring
+
+
+class _LogitDifference:
+    """Grad-CAM target: logit[cls] - logit[other] for the 2-class model."""
+
+    def __init__(self, cls: int):
+        self.cls = cls
+
+    def __call__(self, out):
+        other = 1 - self.cls
+        return out[..., self.cls] - out[..., other] if out.ndim == 2 else out[self.cls] - out[other]
+
+
+def generate_app_cam(model, image_tensor, target_class: int) -> np.ndarray:
+    """(H, W) Grad-CAM in [0, 1] on model.blocks[GRADCAM_BLOCK], explaining
+    target_class against the other class (see module docstring)."""
+    from pytorch_grad_cam import GradCAM
+
+    model.eval()
+    with GradCAM(model=model, target_layers=[model.blocks[GRADCAM_BLOCK]]) as cam:
+        return cam(input_tensor=image_tensor, targets=[_LogitDifference(target_class)])[0]
+
+
 def mask_cam_to_image(heatmap: np.ndarray, valid_mask: np.ndarray) -> np.ndarray:
     """
     Zero the Grad-CAM map on pixels that are not part of the scan (letterbox
     padding, the zero fill retinal flattening leaves in the corners, and
     blank fill already in the source file -- utils.source_fill_mask) and
-    rescale to [0, 1] over the real pixels. conv_head is only 10x10 at 300px
+    rescale to [0, 1] over the real pixels. The target layer is only 10x10 at 300px
     and pytorch_grad_cam min-max scales the whole frame, so those blank areas
     could hold the image's hottest cell -- on 30 Kermany DME test scans they
     took 13% of the heatmap mass on average and the peak in 8/30. Values on
@@ -501,11 +528,9 @@ def run_screening(ctx: dict, bgr: np.ndarray) -> dict:
 
     heatmap = None
     if ctx["gradcam_available"]:
-        from explain import generate_cam
-
         target_class = 1 if prediction == "DME" else 0
         try:
-            heatmap = mask_cam_to_image(generate_cam(model, tensor, target_class), valid_mask)
+            heatmap = mask_cam_to_image(generate_app_cam(model, tensor, target_class), valid_mask)
         except Exception as exc:  # surfaced via heatmap=None -> UI message, never a crash
             print(f"[app] Grad-CAM generation failed: {exc}")
             heatmap = None
@@ -985,8 +1010,9 @@ def render_view_note(result: Optional[dict], view: str) -> str:
             '<div class="extended-note heatmap-note">'
             '<div class="heatmap-legend"><span>Low relevance</span>'
             '<div class="heatmap-legend-bar"></div><span>High relevance</span></div>'
-            f"Colour marks which pixels most drove the model's decision (Grad-CAM on <code>conv_head</code>, "
-            f"randomisation-sanity-checked — see report §2.6).{location_line}</div>"
+            "Colour marks the regions that most pushed the model towards its call (Grad-CAM, "
+            "10×10 resolution, so blobs are coarse; randomisation-sanity-checked). "
+            f"It shows model attention, not a fluid outline.{location_line}</div>"
         )
     if view == "fluid mask":
         seg = result.get("segmentation")
