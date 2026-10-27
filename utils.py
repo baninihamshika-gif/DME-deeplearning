@@ -376,7 +376,26 @@ def _letterbox_resize(image: np.ndarray, target_size: int = IMAGE_SIZE):
     return canvas, content_bbox
 
 
-def flatten_retina(gray: np.ndarray, enabled: bool = True):
+def source_fill_mask(gray: np.ndarray, min_frac: float = 0.002) -> np.ndarray:
+    """
+    Blank fill baked into the source file (Kermany exports carry solid white
+    or black wedges along the frame edge): connected regions of exactly 0 or
+    255 that touch the border and cover at least `min_frac` of the image.
+    Returns a bool mask, True on fill. Display-only -- see preprocess_image.
+    """
+    h, w = gray.shape
+    fill = np.zeros((h, w), dtype=bool)
+    for value in (0, 255):
+        n, labels, stats, _ = cv2.connectedComponentsWithStats((gray == value).astype(np.uint8), connectivity=8)
+        for k in range(1, n):
+            x, y, bw, bh, area = stats[k]
+            if area >= min_frac * h * w and (x == 0 or y == 0 or x + bw == w or y + bh == h):
+                fill |= labels == k
+    return fill
+
+
+def flatten_retina(gray: np.ndarray, enabled: bool = True, return_valid: bool = False,
+                   source_valid: Optional[np.ndarray] = None):
     """
     Estimate and correct retinal tilt/curvature so the retinal band sits at
     a consistent vertical position across images.
@@ -387,10 +406,13 @@ def flatten_retina(gray: np.ndarray, enabled: bool = True):
     little boundary coverage, or a fit implying an implausibly large shift),
     the *original* image is returned unchanged rather than a distorted one —
     a silent bad flatten is worse than no flatten. Returns
-    (image, fallback_triggered).
+    (image, fallback_triggered), plus -- with return_valid=True -- a uint8
+    mask that is 1 on real image pixels: `source_valid` (all ones if not
+    given) moved by the same column shifts, 0 where the shift left zero fill.
     """
+    valid = np.ones_like(gray, dtype=np.uint8) if source_valid is None else source_valid.astype(np.uint8)
     if not enabled:
-        return gray, False
+        return (gray, False, valid) if return_valid else (gray, False)
 
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
@@ -401,12 +423,12 @@ def flatten_retina(gray: np.ndarray, enabled: bool = True):
         if rows.size > 0:
             lower_boundary[col] = rows.max()
 
-    valid = ~np.isnan(lower_boundary)
-    if valid.sum() < 0.5 * w:
-        return gray, True
+    found = ~np.isnan(lower_boundary)
+    if found.sum() < 0.5 * w:
+        return (gray, True, valid) if return_valid else (gray, True)
 
-    xs = np.nonzero(valid)[0]
-    ys = lower_boundary[valid]
+    xs = np.nonzero(found)[0]
+    ys = lower_boundary[found]
     coeffs = np.polyfit(xs, ys, deg=2)
     fitted = np.polyval(coeffs, np.arange(w))
 
@@ -414,29 +436,38 @@ def flatten_retina(gray: np.ndarray, enabled: bool = True):
     shifts = np.round(target_row - fitted).astype(int)
 
     if np.max(np.abs(shifts)) > h // 2:
-        return gray, True
+        return (gray, True, valid) if return_valid else (gray, True)
 
     flattened = np.zeros_like(gray)
+    src_valid, valid = valid, np.zeros_like(valid)
     for col in range(w):
         shift = int(shifts[col])
         if shift >= 0:
             if shift < h:
                 flattened[shift:, col] = gray[: h - shift, col]
+                valid[shift:, col] = src_valid[: h - shift, col]
         else:
             if -shift < h:
                 flattened[: h + shift, col] = gray[-shift:, col]
+                valid[: h + shift, col] = src_valid[-shift:, col]
 
-    return flattened, False
+    return (flattened, False, valid) if return_valid else (flattened, False)
 
 
-def preprocess_image(image: np.ndarray, image_size: int = IMAGE_SIZE, flatten: bool = RETINAL_FLATTENING_ENABLED):
+def preprocess_image(image: np.ndarray, image_size: int = IMAGE_SIZE, flatten: bool = RETINAL_FLATTENING_ENABLED,
+                     return_valid_mask: bool = False):
     """
     Full deterministic preprocessing pipeline for one OCT B-scan: grayscale
     -> NLM denoise -> retinal flattening -> CLAHE -> aspect-preserving
     resize + letterbox pad -> 3-channel replication.
 
     `image` may already be grayscale (2D) or BGR/RGB (3D). Returns
-    (rgb_uint8_image, content_bbox, flatten_fallback_triggered).
+    (rgb_uint8_image, content_bbox, flatten_fallback_triggered), plus --
+    with return_valid_mask=True -- a (image_size, image_size) bool mask of
+    pixels that show the scan: False on the letterbox padding, on the zero
+    fill flatten_retina leaves behind, and on blank fill already in the
+    source file (source_fill_mask). Display-only (app.py
+    masks Grad-CAM with it); the model input is unchanged either way.
     Normalisation (mean/std) is deliberately NOT applied here — it happens
     after augmentation, at load time.
     """
@@ -450,7 +481,9 @@ def preprocess_image(image: np.ndarray, image_size: int = IMAGE_SIZE, flatten: b
 
     denoised = cv2.fastNlMeansDenoising(gray, h=10)
 
-    flattened, fallback_triggered = flatten_retina(denoised, enabled=flatten)
+    flattened, fallback_triggered, valid = flatten_retina(
+        denoised, enabled=flatten, return_valid=True, source_valid=~source_fill_mask(gray) if return_valid_mask else None
+    )
 
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(flattened)
@@ -459,6 +492,9 @@ def preprocess_image(image: np.ndarray, image_size: int = IMAGE_SIZE, flatten: b
 
     rgb = cv2.cvtColor(letterboxed, cv2.COLOR_GRAY2RGB)
 
+    if return_valid_mask:
+        valid_lb, _ = _letterbox_resize(valid * 255, image_size)
+        return rgb, content_bbox, fallback_triggered, valid_lb > 127
     return rgb, content_bbox, fallback_triggered
 
 
