@@ -1,0 +1,46 @@
+{
+  "1_reconstructed_equals_reported": {
+    "pass": true,
+    "detail": "80/80 values match"
+  },
+  "2_figures_match_csv": {
+    "pass": true,
+    "detail": "0 mismatches"
+  },
+  "3_tables_match_csv": {
+    "pass": true,
+    "detail": "0 mismatches"
+  },
+  "4_confidence_intervals_recomputed": {
+    "pass": true,
+    "detail": "0 mismatches (Wilson via scipy; DeLong via brute-force O(mn) implementation)"
+  },
+  "5_positive_class_is_DME": {
+    "pass": true,
+    "detail": "0 rows where label != DME filename prefix"
+  },
+  "6_duplicates_and_patient_overlap": {
+    "pass": true,
+    "detail": "patient overlap 0, exact dups test-pool 0, within test 0, dHash near-dup pairs 10 (all visually different eyes)"
+  },
+  "7_roc_from_continuous_scores": {
+    "pass": true,
+    "detail": "{'test_predictions_EfficientNet-B0': 417, 'test_predictions_EfficientNet-B3': 396, 'test_predictions_EfficientNet-B3_LS005': 484, 'test_predictions_ResNet-50': 454}"
+  },
+  "8_literature_traceable": {
+    "pass": true,
+    "detail": "22 published rows with table location and DOI"
+  },
+  "9_no_head_to_head_claims": {
+    "pass": true,
+    "detail": "no unqualified superiority/clinical-readiness wording"
+  },
+  "10_checkpoints_and_results_unchanged": {
+    "pass": true,
+    "detail": "9/9 files identical"
+  },
+  "11_figures_reopen": {
+    "pass": true,
+    "detail": "6 PNG, 6 PDF"
+  }
+}

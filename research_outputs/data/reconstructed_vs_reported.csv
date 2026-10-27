@@ -1,0 +1,81 @@
+model,setting,threshold,metric,reported_metrics_json,reconstructed,abs_diff,match,reported_source
+EfficientNet-B3,test_at_default_threshold,0.5,TP,241.0,241.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_default_threshold,0.5,FP,0.0,0.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_default_threshold,0.5,TN,242.0,242.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_default_threshold,0.5,FN,1.0,1.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_default_threshold,0.5,accuracy,0.9979338842975206,0.9979338842975206,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_default_threshold,0.5,sensitivity,0.9958677685950413,0.9958677685950413,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_default_threshold,0.5,specificity,1.0,1.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_default_threshold,0.5,precision,1.0,1.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_default_threshold,0.5,f1,0.9979296066252588,0.9979296066252588,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_default_threshold,0.5,auc,1.0,1.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_tuned_threshold,0.971,TP,238.0,238.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_tuned_threshold,0.971,FP,0.0,0.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_tuned_threshold,0.971,TN,242.0,242.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_tuned_threshold,0.971,FN,4.0,4.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_tuned_threshold,0.971,accuracy,0.9917355371900827,0.9917355371900827,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_tuned_threshold,0.971,sensitivity,0.9834710743801653,0.9834710743801653,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_tuned_threshold,0.971,specificity,1.0,1.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_tuned_threshold,0.971,precision,1.0,1.0,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_tuned_threshold,0.971,f1,0.9916666666666667,0.9916666666666667,0.0,True,artifacts/metrics.json
+EfficientNet-B3,test_at_tuned_threshold,0.971,auc,1.0,1.0,0.0,True,artifacts/metrics.json
+EfficientNet-B0,test_at_default_threshold,0.5,TP,241.0,241.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_default_threshold,0.5,FP,0.0,0.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_default_threshold,0.5,TN,242.0,242.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_default_threshold,0.5,FN,1.0,1.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_default_threshold,0.5,accuracy,0.9979338842975206,0.9979338842975206,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_default_threshold,0.5,sensitivity,0.9958677685950413,0.9958677685950413,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_default_threshold,0.5,specificity,1.0,1.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_default_threshold,0.5,precision,1.0,1.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_default_threshold,0.5,f1,0.9979296066252588,0.9979296066252588,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_default_threshold,0.5,auc,1.0,1.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_tuned_threshold,0.608,TP,240.0,240.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_tuned_threshold,0.608,FP,0.0,0.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_tuned_threshold,0.608,TN,242.0,242.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_tuned_threshold,0.608,FN,2.0,2.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_tuned_threshold,0.608,accuracy,0.9958677685950413,0.9958677685950413,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_tuned_threshold,0.608,sensitivity,0.9917355371900827,0.9917355371900827,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_tuned_threshold,0.608,specificity,1.0,1.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_tuned_threshold,0.608,precision,1.0,1.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_tuned_threshold,0.608,f1,0.995850622406639,0.995850622406639,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+EfficientNet-B0,test_at_tuned_threshold,0.608,auc,1.0,1.0,0.0,True,artifacts/baselines/tf_efficientnet_b0/metrics.json
+ResNet-50,test_at_default_threshold,0.5,TP,241.0,241.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_default_threshold,0.5,FP,0.0,0.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_default_threshold,0.5,TN,242.0,242.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_default_threshold,0.5,FN,1.0,1.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_default_threshold,0.5,accuracy,0.9979338842975206,0.9979338842975206,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_default_threshold,0.5,sensitivity,0.9958677685950413,0.9958677685950413,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_default_threshold,0.5,specificity,1.0,1.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_default_threshold,0.5,precision,1.0,1.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_default_threshold,0.5,f1,0.9979296066252588,0.9979296066252588,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_default_threshold,0.5,auc,1.0,1.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_tuned_threshold,0.628,TP,241.0,241.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_tuned_threshold,0.628,FP,0.0,0.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_tuned_threshold,0.628,TN,242.0,242.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_tuned_threshold,0.628,FN,1.0,1.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_tuned_threshold,0.628,accuracy,0.9979338842975206,0.9979338842975206,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_tuned_threshold,0.628,sensitivity,0.9958677685950413,0.9958677685950413,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_tuned_threshold,0.628,specificity,1.0,1.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_tuned_threshold,0.628,precision,1.0,1.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_tuned_threshold,0.628,f1,0.9979296066252588,0.9979296066252588,0.0,True,artifacts/baselines/resnet50/metrics.json
+ResNet-50,test_at_tuned_threshold,0.628,auc,1.0,1.0,0.0,True,artifacts/baselines/resnet50/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_default_threshold,0.5,TP,241.0,241.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_default_threshold,0.5,FP,0.0,0.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_default_threshold,0.5,TN,242.0,242.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_default_threshold,0.5,FN,1.0,1.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_default_threshold,0.5,accuracy,0.9979338842975206,0.9979338842975206,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_default_threshold,0.5,sensitivity,0.9958677685950413,0.9958677685950413,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_default_threshold,0.5,specificity,1.0,1.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_default_threshold,0.5,precision,1.0,1.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_default_threshold,0.5,f1,0.9979296066252588,0.9979296066252588,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_default_threshold,0.5,auc,1.0,1.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_tuned_threshold,0.89,TP,240.0,240.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_tuned_threshold,0.89,FP,0.0,0.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_tuned_threshold,0.89,TN,242.0,242.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_tuned_threshold,0.89,FN,2.0,2.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_tuned_threshold,0.89,accuracy,0.9958677685950413,0.9958677685950413,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_tuned_threshold,0.89,sensitivity,0.9917355371900827,0.9917355371900827,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_tuned_threshold,0.89,specificity,1.0,1.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_tuned_threshold,0.89,precision,1.0,1.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_tuned_threshold,0.89,f1,0.995850622406639,0.995850622406639,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json
+EfficientNet-B3 + LS 0.05 (ablation),test_at_tuned_threshold,0.89,auc,1.0,1.0,0.0,True,artifacts/ablation/label_smoothing_0.05/metrics.json

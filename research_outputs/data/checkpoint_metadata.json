@@ -1,0 +1,87 @@
+{
+  "EfficientNet-B3": {
+    "checkpoint": "artifacts/kaggle/20260917T035646Z/artifacts/checkpoint_best.pt",
+    "model_name": "tf_efficientnet_b3",
+    "phase": "B",
+    "global_epoch": 20,
+    "val_auc_at_selection": 0.9958184899820804,
+    "best_val_auc": null,
+    "stored_threshold": 0.971,
+    "stored_temperature": 0.9170964410193667,
+    "checkpoint_keys": [
+      "epoch_in_phase",
+      "global_epoch",
+      "phase",
+      "temperature",
+      "threshold",
+      "val_auc"
+    ],
+    "prediction_file": "research_outputs/data/test_predictions_EfficientNet-B3.csv"
+  },
+  "EfficientNet-B0": {
+    "checkpoint": "artifacts/kaggle/20260920T092347Z/artifacts/checkpoint_best.pt",
+    "model_name": "tf_efficientnet_b0",
+    "phase": "B",
+    "global_epoch": 19,
+    "val_auc_at_selection": 0.9950140044194852,
+    "best_val_auc": null,
+    "stored_threshold": 0.608,
+    "stored_temperature": 1.0192769616361774,
+    "checkpoint_keys": [
+      "epoch_in_phase",
+      "global_epoch",
+      "model_name",
+      "phase",
+      "temperature",
+      "threshold",
+      "val_auc"
+    ],
+    "prediction_file": "research_outputs/data/test_predictions_EfficientNet-B0.csv"
+  },
+  "ResNet-50": {
+    "checkpoint": "artifacts/kaggle/20260920T110729Z/artifacts/checkpoint_best.pt",
+    "model_name": "resnet50",
+    "phase": "B",
+    "global_epoch": 30,
+    "val_auc_at_selection": 0.99610035624043,
+    "best_val_auc": null,
+    "stored_threshold": 0.628,
+    "stored_temperature": 0.8806400487436382,
+    "checkpoint_keys": [
+      "epoch_in_phase",
+      "global_epoch",
+      "model_name",
+      "phase",
+      "temperature",
+      "threshold",
+      "val_auc"
+    ],
+    "prediction_file": "research_outputs/data/test_predictions_ResNet-50.csv"
+  },
+  "EfficientNet-B3+LS0.05": {
+    "checkpoint": "artifacts/kaggle/20260922T160023Z/artifacts/checkpoint_best.pt",
+    "model_name": "tf_efficientnet_b3",
+    "phase": "B",
+    "global_epoch": 13,
+    "val_auc_at_selection": 0.9951945692039075,
+    "best_val_auc": null,
+    "stored_threshold": 0.89,
+    "stored_temperature": 0.47924995706210766,
+    "checkpoint_keys": [
+      "epoch_in_phase",
+      "global_epoch",
+      "model_name",
+      "phase",
+      "temperature",
+      "threshold",
+      "val_auc"
+    ],
+    "prediction_file": "research_outputs/data/test_predictions_EfficientNet-B3_LS005.csv"
+  },
+  "_environment": {
+    "torch": "2.14.0+cpu",
+    "timm": "0.9.7",
+    "numpy": "2.4.6",
+    "python": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]"
+  }
+}

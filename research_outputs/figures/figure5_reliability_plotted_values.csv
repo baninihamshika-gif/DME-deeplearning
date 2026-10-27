@@ -1,0 +1,33 @@
+model,probabilities,bin,mean_pred,frac_pos,count
+EfficientNet-B3,raw,0,0.0001359307835733,0.0,242
+EfficientNet-B3,raw,3,0.30948904,1.0,1
+EfficientNet-B3,raw,6,0.6404196,1.0,1
+EfficientNet-B3,raw,9,0.99877666525,1.0,240
+EfficientNet-B3,calibrated,0,8.000773259228803e-05,0.0,242
+EfficientNet-B3,calibrated,2,0.29420373,1.0,1
+EfficientNet-B3,calibrated,6,0.6523448,1.0,1
+EfficientNet-B3,calibrated,9,0.9990655435,1.0,240
+EfficientNet-B0,raw,0,0.0004649977645472,0.0041152263374485,243
+EfficientNet-B0,raw,5,0.56207615,1.0,1
+EfficientNet-B0,raw,8,0.8379692,1.0,1
+EfficientNet-B0,raw,9,0.9984504915062762,1.0,239
+EfficientNet-B0,calibrated,0,0.0004956168835209,0.0041152263374485,243
+EfficientNet-B0,calibrated,5,0.5609139,1.0,1
+EfficientNet-B0,calibrated,8,0.8656368,1.0,2
+EfficientNet-B0,calibrated,9,0.9987614423529412,1.0,238
+ResNet-50,raw,0,0.0010225712739065,0.0041152263374485,243
+ResNet-50,raw,8,0.80005777,1.0,1
+ResNet-50,raw,9,0.9994157775416668,1.0,240
+ResNet-50,calibrated,0,0.0005026276650526,0.0041152263374485,243
+ResNet-50,calibrated,8,0.8284384,1.0,1
+ResNet-50,calibrated,9,0.9996840362916668,1.0,240
+EfficientNet-B3 + LS 0.05 (ablation),raw,0,0.0359402969045643,0.0,241
+EfficientNet-B3 + LS 0.05 (ablation),raw,1,0.15044744,0.0,1
+EfficientNet-B3 + LS 0.05 (ablation),raw,2,0.277653,1.0,1
+EfficientNet-B3 + LS 0.05 (ablation),raw,6,0.67911416,1.0,1
+EfficientNet-B3 + LS 0.05 (ablation),raw,8,0.8613781814285714,1.0,7
+EfficientNet-B3 + LS 0.05 (ablation),raw,9,0.9828831334763948,1.0,233
+EfficientNet-B3 + LS 0.05 (ablation),calibrated,0,0.0014283093917975,0.0,242
+EfficientNet-B3 + LS 0.05 (ablation),calibrated,1,0.11972237,1.0,1
+EfficientNet-B3 + LS 0.05 (ablation),calibrated,8,0.8269734,1.0,1
+EfficientNet-B3 + LS 0.05 (ablation),calibrated,9,0.9988366935,1.0,240

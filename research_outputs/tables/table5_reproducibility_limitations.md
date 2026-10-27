@@ -1,0 +1,21 @@
+**Table 5. Reproducibility and limitations**
+
+| Item | Detail |
+|---|---|
+| Software (this audit) | Python 3.14.4, torch 2.14.0+cpu, timm 0.9.7, scikit-learn 1.9.0, scipy 1.18.1, numpy 2.4.6, pandas 3.0.5, matplotlib 3.11.1 |
+| Software (original training) | Kaggle image; requirements.txt pins torch 2.3 / timm 0.9 / scikit-learn 1.4 (1.4.2 installed per full_run_log.txt) |
+| Hardware | Training: Kaggle GPU, Tesla T4 (named in full_run_log.txt and the ResNet-50 run.log). This audit: CPU-only Windows 11 workstation, 12 logical cores |
+| Random seeds | SEED=42 for splits, torch, numpy (utils.set_seed); bootstrap seed 42 in this audit |
+| Preprocessing | NLM denoise h=10 -> polynomial retinal flattening -> CLAHE (2.0, 8x8) -> aspect-preserving letterbox 300x300 -> ImageNet normalisation |
+| Split strategy | Patient-grouped StratifiedGroupKFold(5) on Kermany train/; one fold = validation; all images of 305 patients shared with test/ removed |
+| Checkpoint selection | Best validation AUROC; early stop on validation loss (patience 5) |
+| Threshold selection | 0.5 (primary, pre-specified by argmax). 'Tuned' thresholds chosen for sensitivity >= 0.97 on a validation set that does not match the training-time split -> not valid |
+| Calibration protocol | Single temperature, NLM fit on the same mismatched validation set; test set not used |
+| Evaluation metrics | Confusion-matrix metrics (manual + sklearn cross-check), AUROC (sklearn + DeLong cross-check), PR-AUC, Brier, log loss, ECE (10 bins) |
+| Statistical methods | Wilson CIs; stratified / patient-cluster percentile bootstrap (B=2000); DeLong AUROC CI; exact McNemar + paired DeLong with Holm correction |
+| Missing data / predictions | No per-image predictions were saved originally (regenerated); B0 training log empty; B3 training_log.csv lost (console-parsed version used); training-time split manifest not saved |
+| Leakage concerns and evidence | Train/val<->test patient overlap 0 after exclusion; 0 exact or visually confirmed near duplicates test<->pool; validation-set mismatch at evaluation time contaminates threshold/temperature; test set distribution differs from training (dimensions, border artifact) |
+| External validation | None. All results are internal to the Kermany dataset |
+| Deviation from original methodology (this audit) | No retraining. New: re-inference of saved checkpoints on test set and on the readable images of the 305 excluded patients (count in Table 1 / Table 2); leakage scans; statistics |
+
+*Compiled from source code, run logs, checkpoints and this audit's scripts.*

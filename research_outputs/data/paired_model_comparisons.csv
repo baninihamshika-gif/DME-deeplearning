@@ -1,0 +1,4 @@
+model_a,model_b,a_correct_b_wrong,a_wrong_b_correct,mcnemar_exact_p,auroc_a,auroc_b,delong_paired_p,delong_note,mcnemar_holm_p
+EfficientNet-B3,EfficientNet-B0,1,1,1.0,1.0,1.0,,"undefined: both AUROC = 1, zero variance",1.0
+EfficientNet-B3,ResNet-50,1,1,1.0,1.0,1.0,,"undefined: both AUROC = 1, zero variance",1.0
+EfficientNet-B0,ResNet-50,0,0,1.0,1.0,1.0,,"undefined: both AUROC = 1, zero variance",1.0
