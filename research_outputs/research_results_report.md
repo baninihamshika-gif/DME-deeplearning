@@ -245,8 +245,9 @@ It includes **no cross-study statistical test and no relative-improvement claim*
 - The reported test Dice / IoU of 0.0090 / 0.0045 are reproduced exactly (`segmentation_summary.json`).
 - **The model is collapsed:** it labels 99.99% of every 320×320 frame as fluid, including padding, with mean probability 0.98. The checkpoint is from epoch 1 of 6.
 - The phase-4 sign-off's explanation ("predicting almost no foreground") is incorrect.
-- The ground-truth definition counts ungraded pixels as background.
-- Human inter-grader Dice on the same test scans is 0.758 (0.620 on fluid-positive scans).
+- The ground-truth definition counts ungraded pixels as background. Only a central column band (500–542 of 768 columns, where the manual layers are traced) is graded. The ungraded margins are stored as 0, not NaN, so `segment.py` cannot tell them apart from "no fluid".
+- Restricted to that graded band, test Dice is 0.020 (val 0.030), still a collapsed model. An earlier version of this audit masked NaN pixels instead, which covers the whole frame, and reported 0.014 as graded-only (corrected 2026-10-28).
+- Human inter-grader Dice on the same test scans, within the graded band, is 0.758 (0.620 on fluid-positive scans). No fluid is marked outside the band, so this value does not depend on the mask correction.
 - Segmentation performance is therefore **not reported as a result**. Audit Figure A1 documents the failure instead, and no Table 4 is produced.
 
 ## 11. Calibration and explainability

@@ -68,7 +68,7 @@ def main():
          "Eyes / volumes": "10 volumes (61 B-scans each; 11 annotated)", "DME-positive": "NA (all DME subjects)", "DME-negative (Normal)": "NA",
          "Split": f"train 6 / val 2 ({', '.join(seg['val']['subjects'])}) / test 2 ({', '.join(seg['test']['subjects'])}) subjects", "Unit of splitting": "patient",
          "Dimensionality": "2D B-scan", "OCT device": "Heidelberg Spectralis according to the dataset paper (prior knowledge, not re-verified)", "Label source": "manual fluid masks, grader 1 (manualFluid1)",
-         "Independent of training": "Yes (disjoint subjects)", "Notes": "Ungraded (NaN) pixels treated as background by segment.py."},
+         "Independent of training": "Yes (disjoint subjects)", "Notes": "Only a central column band (500-542 of 768 columns) is graded; the ungraded margins are stored as 0, not NaN, so segment.py counts them as background."},
     ]
     write(pd.DataFrame(t1), "table1_dataset_setup", "Table 1. Dataset and experimental setup",
           "Counts computed from files on disk (research_outputs/data/image_hashes.csv). Patient = ID parsed from the Kermany filename; eye and volume identity are not available. No patient counts are inferred from image counts.")

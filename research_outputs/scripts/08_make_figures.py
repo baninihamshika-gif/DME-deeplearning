@@ -323,7 +323,7 @@ def figure_a1():
     ax.set(xlim=(-0.5, 10), ylim=(0, 101), xlabel="Ground-truth fluid, % of graded region", ylabel="Predicted fluid, % of whole frame")
     ax.set_title("Predicted vs true fluid fraction", loc="left", fontsize=9); ax.legend(fontsize=7.5, loc="center right")
     fig.suptitle("Audit Figure A1 — U-Net Fluid Segmentation Collapsed to All-Foreground (Not a Performance Figure)", fontsize=11, y=1.0)
-    fig.text(0.0, -0.04, "Duke DME (Chiu et al. 2015), held-out subjects 06 and 07 (22 annotated B-scans; 8 with no fluid). Target: any manualFluid1 region; ungraded pixels counted as background by segment.py. "
+    fig.text(0.0, -0.04, "Duke DME (Chiu et al. 2015), held-out subjects 06 and 07 (22 annotated B-scans; 8 with no fluid). Target: any manualFluid1 region; ungraded side margins (stored as 0) counted as background by segment.py; graded region = columns with manual layer annotations. "
              "Checkpoint from epoch 1 of 6.\nThe model labels 99.99% of every frame (including zero padding) as fluid; mean test Dice 0.0090 / IoU 0.0045 reflects this failure, not partial success. "
              "Examples = first fluid-positive and first fluid-free test scan in subject/scan order.", fontsize=7, color=INK2)
     save(fig, "figureA1_segmentation_audit", pd.DataFrame(rows))
