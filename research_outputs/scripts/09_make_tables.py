@@ -122,10 +122,15 @@ def main():
           "A = within-project; B = similar task and unit (2D B-scan) but different dataset/population/label definition; C = different evaluation unit or input (volume-level/3D); D = different task or modality, not plotted. "
           "Published values copied as printed; internally inconsistent values (Tang 2021, Rodríguez-Miguel 2024, Li 2019, Singh & Gorantla 2020) are flagged in the notes column. NR = not reported. This project's AUROC CI is degenerate (perfect separation).")
 
+    rt = json.loads((REPO / "research_outputs" / "segmentation_retrain" / "segmentation_summary.json").read_text())["test"]
     (TAB / "table4_segmentation_NOT_PRODUCED.md").write_text(
         "**Table 4 (segmentation) was not produced.**\n\nThe U-Net checkpoint labels ~99.99% of every frame as fluid (research_outputs/data/segmentation_summary.json). "
         f"Its test Dice ({seg['test']['mean_dice_pipeline_convention']:.4f}) and IoU ({seg['test']['mean_iou_pipeline_convention']:.4f}) are reproduced, but they describe a collapsed model, "
-        "and the ground-truth definition counts ungraded pixels as background. A results table would imply a valid evaluation; see Audit Figure A1 and research_audit/metric_verification.md §B4 instead.\n", encoding="utf8")
+        "and the ground-truth definition counts ungraded pixels as background. A results table would imply a valid evaluation; see Audit Figure A1 and research_audit/metric_verification.md §B4 instead.\n\n"
+        "**Retrained model.** The U-Net was later retrained with graded-only loss and metrics and validation-only epoch/threshold selection (report §10.2). "
+        f"On the same two test subjects (22 scans) it reaches pooled Dice {rt['model']['pooled_dice']:.3f} and fluid-positive mean Dice {rt['model']['mean_dice_fluid_positive']:.3f}, "
+        f"against {rt['inter_grader_g2_vs_g1']['pooled_dice']:.3f} / {rt['inter_grader_g2_vs_g1']['mean_dice_fluid_positive']:.3f} between graders and "
+        f"{rt['baseline_all_foreground']['pooled_dice']:.3f} for predicting fluid everywhere. Full results: research_outputs/segmentation_retrain_report.md and research_outputs/segmentation_retrain/.\n", encoding="utf8")
 
     import sklearn, scipy, torch, timm, matplotlib
     t5 = [

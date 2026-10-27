@@ -240,7 +240,9 @@ It includes **no cross-study statistical test and no relative-improvement claim*
 - Volume-level and B-scan-level metrics are not interchangeable. In Tang 2021, the same 2D network scores AUROC 0.958 at volume level vs 0.940 at B-scan level on SPECTRALIS primary data: aggregation changes the numbers.
 - B-scan test sets also contain correlated images from the same eye, which inflates the apparent sample size. Kermany provides no volume IDs, so this project cannot correct for it beyond patient grouping.
 
-## 10. Segmentation [R]
+## 10. Segmentation
+
+### 10.1 Original checkpoint (audited) [R]
 
 - The reported test Dice / IoU of 0.0090 / 0.0045 are reproduced exactly (`segmentation_summary.json`).
 - **The model is collapsed:** it labels 99.99% of every 320×320 frame as fluid, including padding, with mean probability 0.98. The checkpoint is from epoch 1 of 6.
@@ -248,7 +250,39 @@ It includes **no cross-study statistical test and no relative-improvement claim*
 - The ground-truth definition counts ungraded pixels as background. Only a central column band (500–542 of 768 columns, where the manual layers are traced) is graded. The ungraded margins are stored as 0, not NaN, so `segment.py` cannot tell them apart from "no fluid".
 - Restricted to that graded band, test Dice is 0.020 (val 0.030), still a collapsed model. An earlier version of this audit masked NaN pixels instead, which covers the whole frame, and reported 0.014 as graded-only (corrected 2026-10-28).
 - Human inter-grader Dice on the same test scans, within the graded band, is 0.758 (0.620 on fluid-positive scans). No fluid is marked outside the band, so this value does not depend on the mask correction.
-- Segmentation performance is therefore **not reported as a result**. Audit Figure A1 documents the failure instead, and no Table 4 is produced.
+- The original checkpoint's performance is therefore **not reported as a result**. Audit Figure A1 documents the failure instead, and no Table 4 is produced for it.
+
+### 10.2 Retrained model (new analysis, separate session) [N]
+
+After this audit, the U-Net was retrained in a separate session (branch `claude/seg-retrain-227f8e`, merged into `main`; code `da997e8`, results `28e89f8`). Full details are in `research_outputs/segmentation_retrain_report.md`, with machine-readable results in `research_outputs/segmentation_retrain/`. The checkpoint is git-ignored at `artifacts/segmentation_retrain/checkpoint_best.pt` (sha256 prefix `d8c076af6fdb7cb6`). The original checkpoint was not modified.
+
+- **What changed:**
+  - The loss and all metrics use graded pixels only (the layer band of §10.1).
+  - The loss adds BCE with `pos_weight` 10 plus a soft Dice term, fixed in advance.
+  - The epoch and the probability threshold were selected jointly on validation only: epoch 17 of 32, threshold 0.80.
+  - All-foreground and all-background baselines are reported.
+  - Metrics are computed at native 496×768 resolution.
+  - Same patient split as before (seed 42; test subjects 06 and 07).
+- **Test results (22 scans, 14 with fluid), evaluated once:**
+
+| | Pooled Dice | Mean Dice, fluid-positive scans |
+|---|---|---|
+| Retrained model (t = 0.80) | **0.706** | **0.633** |
+| Grader 2 vs grader 1 | 0.694 | 0.615 |
+| All-foreground baseline | 0.020 | 0.031 |
+| All-background baseline | 0.000 | 0.000 |
+
+- Validation: pooled Dice 0.796, fluid-positive mean 0.595.
+- **Audit check [R]:** pooled, mean and fluid-positive Dice for both splits were recomputed from the committed per-image rows (`segmentation_per_image.csv`) and match the summary JSON to four decimals. Inference was not rerun by the audit.
+- **Interpretation:** on these two held-out subjects, agreement with grader 1 is about the same as the human inter-grader agreement. It is far above the trivial baselines, so the collapse of §10.1 is fixed.
+- **Limits:**
+  - The test set is two subjects and 22 scans. Per-subject pooled Dice is 0.694 and 0.797, and subject 07 has only 4 fluid-positive scans.
+  - One test scan with a 354-pixel grader-1 region scores Dice 0.
+  - One of eight fluid-free test scans gets a small false positive (196 pixels).
+  - Mean boundary distance on test is 26.9 pixels, against 5.7 between graders.
+  - All data are from one public Spectralis dataset (Duke 2015), with no external segmentation test.
+  - Inter-grader values differ slightly from §10.1 (e.g. mean Dice 0.755 vs 0.758) because the retrain scores at native resolution, not the 320×320 letterbox.
+
 
 ## 11. Calibration and explainability
 
@@ -294,7 +328,7 @@ The selected epochs agree with the checkpoints: LS peaks at epoch 13 (0.9952), a
 - **Table 1.** Dataset and experimental setup (`tables/table1_dataset_setup.md`).
 - **Table 2.** Verified within-project model performance, with 95% CIs, including the supplementary unseen pool, refit tuned operating points and the superseded originals (`tables/table2_within_project_performance.md`).
 - **Table 3.** Published DME classifiers and the present model, with evaluation unit, cohort and comparability category; not a head-to-head comparison (`tables/table3_literature_comparison.md`).
-- **Table 4.** Not produced: segmentation evaluation invalid (`tables/table4_segmentation_NOT_PRODUCED.md`).
+- **Table 4.** Not produced for the original checkpoint, whose evaluation is invalid (`tables/table4_segmentation_NOT_PRODUCED.md`). The note points to the retrained model's results (§10.2), which are reported in `segmentation_retrain_report.md`.
 - **Table 5.** Reproducibility and limitations (`tables/table5_reproducibility_limitations.md`).
 
 ## 14. Scientific interpretation
@@ -315,7 +349,7 @@ The selected epochs agree with the checkpoints: LS peaks at epoch 13 (0.9952), a
 - Per-image outputs were not saved originally; the reconstructed outputs come from a different software stack (agreement with every stored aggregate was confirmed).
 - The audited B0 run folder's log is empty; its exclusion of test patients is verified through an identical-weights run whose log survives (`20260920T095427Z`). The B3 per-epoch log is a console reconstruction without accuracy.
 - Labels come from the public dataset folders. Kermany "DME" vs "NORMAL" is a different label definition from clinically graded DME in diabetic cohorts, and negatives exclude other pathology.
-- Segmentation is non-functional, and its ground-truth handling of ungraded pixels is flawed.
+- The original segmentation checkpoint is non-functional (§10.1). The retrained model (§10.2) matches human inter-grader agreement, but on only two test subjects (22 scans) from one public dataset; boundary accuracy is worse than between graders, and there is no external test.
 - The single B-scan design cannot assess centre involvement.
 
 ## 16. Reproducibility
@@ -382,7 +416,7 @@ python research_outputs/scripts/13_external_validation.py
 |---|---|
 | Existing results [E] | `metrics.json` aggregates; Grad-CAM randomisation check; training logs; segmentation log values |
 | Independently reconstructed [R] | all test-set confusion matrices and metrics, AUROC, calibration metrics; segmentation Dice/IoU; split counts |
-| New analyses [N] | External evaluation on OCTDL, Duke 2014 and Duke 2015; CIs and paired tests; duplicate and patient-overlap scan; dimension and border-artifact analyses; validation-split mismatch diagnosis and measured contamination (84.3%); training-time split rebuild and threshold/temperature refit; supplementary unseen-pool evaluation; segmentation failure-mode analysis; literature extraction |
+| New analyses [N] | Retrained segmentation U-Net (§10.2; aggregates re-checked from per-image rows); external evaluation on OCTDL, Duke 2014 and Duke 2015; CIs and paired tests; duplicate and patient-overlap scan; dimension and border-artifact analyses; validation-split mismatch diagnosis and measured contamination (84.3%); training-time split rebuild and threshold/temperature refit; supplementary unseen-pool evaluation; segmentation failure-mode analysis; literature extraction |
 | Unverified [U] | None outstanding for the literature extraction. Not tested: the reason for the OCTDL misses (label definition vs device) |
 
 ## 18. Recommended future experiments
@@ -390,7 +424,7 @@ python research_outputs/scripts/13_external_validation.py
 1. ~~Rebuild the training-time split with scikit-learn 1.4.2 and refit the threshold and temperature.~~ **Done** (§7.2, scripts 11–12). `requirements.txt` now pins `scikit-learn==1.4.2`, and `train.py` writes `split_manifest.csv` (path, label, patient, split, scikit-learn version) at the start of every run.
 2. ~~Evaluate on an external DME dataset from a different site or device~~ **Partly done** (§7.4: OCTDL, Duke 2015). Duke Srinivasan 2014 was added later (§7.4). Remaining: a clinically graded diabetic cohort, and a volume aggregation or foveal slice-selection rule fixed on separate data. The Isfahan MISP Basel set (swept-source OCT, 40 DME / 50 healthy volumes) was identified but not downloaded.
 3. ~~Save per-image predictions in `evaluate.py` for every future run.~~ **Done:** `evaluate.py` writes `predictions.csv` (validation and test: path, patient, label, both logits, raw and calibrated P(DME)) next to `metrics.json`. Existing checkpoints and results were not rerun.
-4. Re-train the U-Net with ungraded pixels masked out of the loss and metric, a positive-class weight, and a sanity check against all-foreground and all-background baselines.
+4. ~~Re-train the U-Net with ungraded pixels masked out of the loss and metric, a positive-class weight, and a sanity check against all-foreground and all-background baselines.~~ **Done** (§10.2): test pooled Dice 0.706, against 0.694 between graders. Remaining: evaluate on more subjects and on an external segmentation set (e.g. RETOUCH), and check boundary accuracy.
 5. If volumes become available, evaluate at the volume level to allow category-A/B comparison with Tang 2021.
 
 ## 19. References
