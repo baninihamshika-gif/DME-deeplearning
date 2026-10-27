@@ -31,7 +31,7 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 | A | Repository inventory with conflicts | **PASS** | `research_audit/repository_inventory.md` (8 conflicts documented) |
 | B1 | Implementation established from source | **PASS** | `metric_verification.md` B1 |
 | B1 | Patient-level split independence | **PASS** for B3, ResNet-50, A5 · **NOT VERIFIABLE** for B0 | B0 run log is 0 bytes; exclusion implied by `kaggle/entry.py` only |
-| B1 | Threshold/calibration fitted without test data | **PASS** (test not used) · **FAIL** (validation set used ≠ training-time validation; overlaps training) | `leakage_audit.md` §5 |
+| B1 | Threshold/calibration fitted without test data | **PASS** (test not used). Original fit used a contaminated validation set (84.3% training images) and is superseded; **refit** on the rebuilt training-time validation split (n = 5,560, counts match the Kaggle log exactly) | `leakage_audit.md` §5, §5.1; `refit_calibration_threshold.csv` |
 | B2 | Metrics reconstructed with CIs | **PASS** | Table 2 |
 | B2 | Undefined metrics handled explicitly | **PASS** | NaN logic in `04_compute_metrics.py`; none occurred |
 | B3 | 14-point leakage audit | **PASS** | `leakage_audit.md` §1 |
@@ -61,15 +61,15 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 
 - `research_audit/`: `repository_inventory.md`, `metric_verification.md`, `leakage_audit.md`, `literature_extraction.csv`, `comparability_matrix.csv`, `references.bib`, `checksums_before.sha256`
 - `research_outputs/research_results_report.md`, `research_outputs/final_audit_checklist.md`, `research_outputs/.gitignore` (ignores `.cache/`)
-- `research_outputs/scripts/01_…10_*.py` (10 scripts)
-- `research_outputs/data/`: test predictions (4 models), excluded-pool predictions, checkpoint metadata, metric/CI tables, ROC coordinates, reliability bins, calibration summary, paired comparisons, leakage/dimension/border scans, image hashes, segmentation per-image and summary, `final_checks.json`
+- `research_outputs/scripts/01_…12_*.py` (12 scripts; 11 runs in an isolated Python 3.12 / scikit-learn 1.4.2 environment)
+- `research_outputs/data/`: test predictions (4 models), excluded-pool predictions, checkpoint metadata, metric/CI tables, ROC coordinates, reliability bins, calibration summary, paired comparisons, leakage/dimension/border scans, image hashes, segmentation per-image and summary, `training_split_manifest.csv`, `val_predictions_true_split.csv`, `refit_calibration_threshold.csv`, `val_split_contamination.json`, `final_checks.json`
 - `research_outputs/figures/`: figures 1–5 and A1 (PNG + PDF + `_plotted_values.csv`)
 - `research_outputs/tables/`: Tables 1, 2, 3, 5 (CSV + MD), Table 4 note
 - Local cache only (git-ignored): `research_outputs/.cache/` (preprocessing cache, logs, segmentation example arrays)
 
 ## Unresolved issues
 
-1. **Tuned thresholds and temperatures are invalid** (contaminated validation partition). Fixing this needs scikit-learn 1.4.2 to rebuild the Kaggle split; it does not need retraining.
+1. ~~Tuned thresholds and temperatures are invalid~~ **Resolved:** refit on the rebuilt training-time validation split (scripts 11–12). Residual caveat: on the easier test set the refit operating points give perfect or near-perfect counts, and refit scaling worsens test ECE for B3 and B0; validation specificity at 97% sensitivity (0.956–0.982) is the more realistic figure.
 2. **No external validation**, and the official test set appears unrepresentative (easier). The unseen-pool estimate (AUROC 0.996–0.997, accuracy 97.1–97.5%) is the more conservative internal figure.
 3. **B0 test-patient exclusion** cannot be confirmed from a log.
 4. **The segmentation model is non-functional**, and its ground-truth handling of ungraded pixels is flawed.

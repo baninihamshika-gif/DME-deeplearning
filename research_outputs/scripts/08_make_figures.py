@@ -245,8 +245,8 @@ def figure5():
     axes[0].set_ylabel("Observed fraction DME"); axes[0].text(-0.02, -0.11, "n/bin\n(raw)", fontsize=6.3, color=INK2, ha="right", va="center")
     fig.suptitle("Calibration on the Official Test Set: Raw vs Temperature-Scaled Probabilities", fontsize=11, y=1.04)
     fig.text(0.0, -0.1, "10 equal-width bins (same as evaluate.py); empty bins omitted; numbers under each axis = images per bin (raw). Almost all predictions fall in the outermost bins, so intermediate-bin "
-             "estimates rest on 0–2 images.\nTemperatures were fitted by the original evaluate.py on a re-generated 'validation' split that does not match the training-time split and overlaps the training data "
-             "(see leakage_audit.md §5); the test set was not used for fitting.", fontsize=7, color=INK2)
+             "estimates rest on 0–2 images.\nTemperatures were refit with evaluate.fit_temperature on the training-time validation split (n=5,560, rebuilt with scikit-learn 1.4.2; "
+             "scripts 11–12); the test set was not used for fitting.", fontsize=7, color=INK2)
     save(fig, "figure5_reliability", pd.DataFrame(rows))
 
 

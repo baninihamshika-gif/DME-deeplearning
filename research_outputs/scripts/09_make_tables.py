@@ -77,13 +77,19 @@ def main():
     t2 = []
     for _, r in p.iterrows():
         raw = r.threshold == 0.5
-        t2.append({"Model": r.model, "Probabilities / threshold": "raw softmax, 0.5" if raw else f"temperature-scaled, {r.threshold} (tuned)",
+        refit = str(r.threshold_name).startswith("refit")
+        op = "raw softmax, 0.5" if raw else (f"temperature-scaled, {r.threshold} (tuned, refit on training-time validation)" if refit
+                                             else f"temperature-scaled, {r.threshold} (tuned, SUPERSEDED)")
+        status = ("independently reconstructed from checkpoint; matches metrics.json" if raw else
+                  "NEW (this audit): temperature and threshold refit on the training-time validation split (scikit-learn 1.4.2, n=5,560); valid tuned operating point" if refit else
+                  "independently reconstructed from checkpoint; matches metrics.json; SUPERSEDED: threshold/temperature were fitted on a contaminated validation set")
+        t2.append({"Model": r.model, "Probabilities / threshold": op,
                    "Test n (DME/Normal)": f"{r.n} ({r.n_dme}/{r.n_normal})", "TP": r.TP, "FP": r.FP, "TN": r.TN, "FN": r.FN,
                    "Accuracy (95% CI)": ci(r.accuracy, r.accuracy_ci_lo, r.accuracy_ci_hi, 4), "Precision (95% CI)": ci(r.precision, r.precision_ci_lo, r.precision_ci_hi, 4),
                    "Sensitivity (95% CI)": ci(r.sensitivity, r.sensitivity_ci_lo, r.sensitivity_ci_hi, 4), "Specificity (95% CI)": ci(r.specificity, r.specificity_ci_lo, r.specificity_ci_hi, 4),
                    "F1 (95% CI)": ci(r.f1, r.f1_ci_lo, r.f1_ci_hi, 4), "AUROC (95% CI)": f"{r.auroc:.4f} (DeLong CI degenerate)" if r.auroc_ci_lo == r.auroc_ci_hi else ci(r.auroc, r.auroc_ci_lo, r.auroc_ci_hi, 4),
                    "PR-AUC": f"{r.pr_auc_average_precision:.4f}", "Brier": f"{r.brier:.4f}", "Prediction source": r.prediction_source,
-                   "Verification status": "independently reconstructed from checkpoint; matches metrics.json" + ("" if raw else "; operating point NOT valid (threshold/temperature fitted on contaminated validation set)")})
+                   "Verification status": status})
     exc_p = DATA / "supplementary_excluded_pool_performance.csv"
     if exc_p.exists():
         for _, r in pd.read_csv(exc_p).iterrows():
@@ -96,7 +102,7 @@ def main():
                        "Verification status": "NEW analysis (this audit); patient-cluster bootstrap CIs; not independent of official test set"})
     write(pd.DataFrame(t2), "table2_within_project_performance", "Table 2. Verified within-project model performance (positive class = DME)",
           "Official test rows: Wilson 95% CIs for proportions, class-stratified bootstrap (B=2000, seed 42) for F1, DeLong for AUROC (degenerate when AUROC = 1). "
-          "Supplementary rows: patient-cluster bootstrap (B=2000, seed 42). Only the raw/0.5 rows are methodologically valid operating points.")
+          "Supplementary rows: patient-cluster bootstrap (B=2000, seed 42). Valid operating points: raw/0.5 and the 'refit' tuned rows (temperature and threshold fitted on the training-time validation split). 'SUPERSEDED' rows reproduce the original metrics.json but were fitted on a contaminated validation set.")
 
     lit = pd.read_csv(AUDIT / "literature_extraction.csv", dtype=str)
     cat = {"Supplementary Table S1": "B", "Main text Table 2": "C", "Table 3": "C"}
@@ -128,8 +134,8 @@ def main():
         ("Preprocessing", "NLM denoise h=10 -> polynomial retinal flattening -> CLAHE (2.0, 8x8) -> aspect-preserving letterbox 300x300 -> ImageNet normalisation"),
         ("Split strategy", "Patient-grouped StratifiedGroupKFold(5) on Kermany train/; one fold = validation; all images of 305 patients shared with test/ removed"),
         ("Checkpoint selection", "Best validation AUROC; early stop on validation loss (patience 5)"),
-        ("Threshold selection", "0.5 (primary, pre-specified by argmax). 'Tuned' thresholds chosen for sensitivity >= 0.97 on a validation set that does not match the training-time split -> not valid"),
-        ("Calibration protocol", "Single temperature, NLM fit on the same mismatched validation set; test set not used"),
+        ("Threshold selection", "0.5 (primary, pre-specified by argmax). Tuned threshold: highest specificity with validation sensitivity >= 0.97 (evaluate.sweep_threshold). Originally fitted on a mismatched validation set (superseded); refit in this audit on the training-time split rebuilt with scikit-learn 1.4.2 (n=5,560)"),
+        ("Calibration protocol", "Single temperature, NLL fit (evaluate.fit_temperature). Original fit on the mismatched validation set (superseded); refit on the training-time validation split; test set never used for fitting"),
         ("Evaluation metrics", "Confusion-matrix metrics (manual + sklearn cross-check), AUROC (sklearn + DeLong cross-check), PR-AUC, Brier, log loss, ECE (10 bins)"),
         ("Statistical methods", "Wilson CIs; stratified / patient-cluster percentile bootstrap (B=2000); DeLong AUROC CI; exact McNemar + paired DeLong with Holm correction"),
         ("Missing data / predictions", "No per-image predictions were saved originally (regenerated); B0 training log empty; B3 training_log.csv lost (console-parsed version used); training-time split manifest not saved"),

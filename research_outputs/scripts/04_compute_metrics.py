@@ -191,6 +191,11 @@ def evaluate_set(name, y, p, thresholds, groups=None, source="", t_note=""):
 def main():
     rows, recon_vs_reported, calib_rows, rel_bins = [], [], [], []
     preds = {}
+    refit_path = DATA / "refit_calibration_threshold.csv"
+    refit_params = {}
+    if refit_path.exists():
+        rf = pd.read_csv(refit_path)
+        refit_params = {r.model: (r.temperature_refit, r.threshold_refit) for _, r in rf.iterrows()}
     for name, (slug, mpath) in MODELS.items():
         d = pd.read_csv(DATA / f"test_predictions_{slug}.csv")
         preds[name] = d
@@ -198,7 +203,7 @@ def main():
         rep = json.loads((REPO / mpath).read_text())
         thr_t = rep["tuned_threshold"]; src = f"research_outputs/data/test_predictions_{slug}.csv"
         rows += evaluate_set(name, y, p_raw, [("default 0.5 (raw probabilities)", 0.5)], source=src)
-        rows += evaluate_set(name, y, p_cal, [(f"tuned {thr_t} (calibrated probabilities; threshold and temperature fitted on a contaminated validation set, see leakage_audit.md §5)", thr_t)], source=src,
+        rows += evaluate_set(name, y, p_cal, [(f"superseded tuned {thr_t} (threshold and temperature fitted on a contaminated validation set, see leakage_audit.md §5)", thr_t)], source=src,
                              t_note="tuned operating point not methodologically valid; reported only to reconcile with existing metrics.json")
         # reconstructed vs reported
         for key, thr, pp in (("test_at_default_threshold", 0.5, p_raw), ("test_at_tuned_threshold", thr_t, p_cal)):
@@ -209,12 +214,26 @@ def main():
                 rv = r[metric.lower()] if metric.lower() in r else r[metric]
                 recon_vs_reported.append({"model": name, "setting": key, "threshold": thr, "metric": metric, "reported_metrics_json": rv, "reconstructed": recon,
                                           "abs_diff": abs(float(rv) - float(recon)), "match": abs(float(rv) - float(recon)) < 1e-9, "reported_source": mpath})
-        e_raw, bins_raw = ece(y, p_raw); e_cal, bins_cal = ece(y, p_cal)
-        calib_rows.append({"model": name, "stored_temperature": rep["temperature"], "temperature_fit_set": "local re-split 'validation' n=6047 (NOT the training-time validation set; overlaps training data)",
-                           "brier_raw": brier_score_loss(y, p_raw), "brier_calibrated": brier_score_loss(y, p_cal),
-                           "log_loss_raw": log_loss(y, np.clip(p_raw, 1e-15, 1 - 1e-15)), "log_loss_calibrated": log_loss(y, np.clip(p_cal, 1e-15, 1 - 1e-15)),
-                           "ece10_raw": e_raw, "ece10_calibrated": e_cal, "ece10_raw_reported": rep["calibration"]["ece_before"], "ece10_calibrated_reported": rep["calibration"]["ece_after"]})
-        for kind, bins in (("raw", bins_raw), ("calibrated", bins_cal)):
+        # Valid operating point: temperature and threshold refit on the training-time validation set (script 12).
+        refit = refit_params.get(name)
+        if refit is not None:
+            t_ref, thr_ref = refit
+            z = d[["logit_normal", "logit_dme"]].to_numpy() / t_ref
+            z = z - z.max(axis=1, keepdims=True)
+            p_ref = np.exp(z)[:, 1] / np.exp(z).sum(axis=1)
+            rows += evaluate_set(name, y, p_ref, [(f"refit tuned {thr_ref} (temperature {t_ref:.4f} and threshold fitted on the training-time validation set, n=5,560)", thr_ref)], source=src,
+                                 t_note="valid tuned operating point: fitted on the scikit-learn 1.4.2 training-time validation split (research_outputs/scripts/12_refit_calibration_threshold.py)")
+        else:
+            t_ref, p_ref = rep["temperature"], p_cal
+        e_raw, bins_raw = ece(y, p_raw); e_cal, bins_cal = ece(y, p_ref); e_old, bins_old = ece(y, p_cal)
+        calib_rows.append({"model": name, "temperature": t_ref,
+                           "temperature_fit_set": "training-time validation split, n=5,560 (scikit-learn 1.4.2)" if refit is not None else "local re-split 'validation' n=6047 (contaminated)",
+                           "brier_raw": brier_score_loss(y, p_raw), "brier_calibrated": brier_score_loss(y, p_ref),
+                           "log_loss_raw": log_loss(y, np.clip(p_raw, 1e-15, 1 - 1e-15)), "log_loss_calibrated": log_loss(y, np.clip(p_ref, 1e-15, 1 - 1e-15)),
+                           "ece10_raw": e_raw, "ece10_calibrated": e_cal,
+                           "temperature_contaminated": rep["temperature"], "brier_calibrated_contaminated": brier_score_loss(y, p_cal), "ece10_calibrated_contaminated": e_old,
+                           "ece10_raw_reported": rep["calibration"]["ece_before"], "ece10_calibrated_contaminated_reported": rep["calibration"]["ece_after"]})
+        for kind, bins in (("raw", bins_raw), ("calibrated", bins_cal), ("calibrated_contaminated", bins_old)):
             for b in bins:
                 rel_bins.append({"model": name, "probabilities": kind, **b})
 

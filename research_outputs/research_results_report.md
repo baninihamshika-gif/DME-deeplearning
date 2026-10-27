@@ -37,7 +37,7 @@ Source: the Kermany et al. 2018 OCT2017 release (83,484 training images), DME an
 - **Unit:** the individual B-scan. **Set:** the official 484-image test set, identical for all models (asserted).
 - **Primary operating point:** threshold 0.5 on raw softmax probabilities (equivalent to argmax, so pre-specified).
 - **Original pipeline:** per-image outputs were never saved. This audit regenerated them with a fresh forward pass of each unmodified checkpoint (`research_outputs/scripts/01_reinfer_classifiers.py`) **[R]**.
-- **"Tuned" thresholds** in the original reports were chosen on a validation split that does not match the training-time split (§7.2). They are shown for reconciliation only.
+- **"Tuned" thresholds** in the original reports were chosen on a validation split that does not match the training-time split (§7.2). They are superseded and shown for reconciliation only. **Refit** tuned thresholds and temperatures, fitted on the rebuilt training-time validation split (n = 5,560), are reported in Table 2 and §7.2 **[N]**.
 
 ## 5. Verified model performance (official test set, threshold 0.5) [R]
 
@@ -93,8 +93,19 @@ Details: `research_audit/leakage_audit.md`.
 
 - Training on Kaggle used scikit-learn 1.4.2: validation set 5,560 images.
 - The local re-evaluation used scikit-learn 1.9.0 with the same code and seed, and produced a **different patient partition** (6,047 images).
-- Temperature and "tuned" thresholds were fitted on this local partition. It is expected to overlap substantially with the models' training data; the exact overlap is not computable because the Kaggle split was not saved.
-- This explains the previously unresolved discrepancy between `val_n` 5,560 and 6,047. It invalidates the tuned operating points (B3 0.971, B0 0.608, ResNet-50 0.628) but not the 0.5 or AUROC results.
+- Temperature and "tuned" thresholds were fitted on this local partition. After rebuilding the Kaggle split (below), **5,096 of its 6,047 images (84.3%; 553 of 676 patients) turn out to be training images**.
+- This explains the previously unresolved discrepancy between `val_n` 5,560 and 6,047. It invalidates the original tuned operating points (B3 0.971, B0 0.608, ResNet-50 0.628, B3+LS 0.890) but not the 0.5 or AUROC results.
+
+**Fix [N]:** the training-time split was rebuilt by running the unmodified `utils.build_splits()` under scikit-learn 1.4.2 (script 11). The counts match the Kaggle log exactly (train 24,600, val 5,560: 1,254 DME / 4,306 Normal), and validation AUROC recomputed on it matches each checkpoint's stored `val_auc` to within 7×10⁻⁵. Temperature and threshold were then refit on those 5,560 images with `evaluate.py`'s own functions (script 12); no checkpoint was modified.
+
+| Model | T (old → refit) | Threshold (old → refit) | Val sens / spec | Test TP / FP / TN / FN |
+|---|---|---|---|---|
+| EfficientNet-B3 | 0.917 → 1.549 | 0.971 → 0.181 | 0.9705 / 0.9666 | 242 / 0 / 242 / 0 |
+| EfficientNet-B0 | 1.019 → 1.557 | 0.608 → 0.121 | 0.9705 / 0.9626 | 242 / 0 / 242 / 0 |
+| ResNet-50 | 0.881 → 1.121 | 0.628 → 0.219 | 0.9705 / 0.9821 | 241 / 0 / 242 / 1 |
+| B3 + LS 0.05 | 0.479 → 0.625 | 0.890 → 0.096 | 0.9705 / 0.9561 | 242 / 0 / 242 / 0 |
+
+The refit operating points are valid, but the perfect test counts mostly reflect the easier test set (§7.3). At 97% validation sensitivity the validation specificity (0.956–0.982) is the more realistic estimate. Test sensitivity 242/242 has a Wilson 95% CI of 0.9844–1.0000.
 
 ### 7.3 The official test set is unlike the training distribution [N]
 
@@ -154,9 +165,11 @@ It includes **no cross-study statistical test and no relative-improvement claim*
 
 Source: `calibration_summary.csv`, Figure 5.
 
-- **Calibration [R]:** for B3, B0 and ResNet-50, temperature scaling changes Brier, log loss and ECE only in the 4th decimal place, sometimes for the worse. Example: B3 ECE 0.0028 → 0.0027, Brier 0.00129 → 0.00131.
-- **The ablation is the one real effect.** Label smoothing produces under-confident raw probabilities (ECE 0.031), which temperature scaling repairs (0.0035).
-- **These calibration numbers carry little information.** 482–483 of 484 predictions fall in the two outermost bins. Temperatures were also fitted on the contaminated validation partition (§7.2).
+- **Calibration [N]:** temperatures are now refit on the training-time validation split (§7.2). On that validation set, scaling reduces ECE for every model (e.g. B3 0.0133 → 0.0054).
+- **On the test set, refit scaling does not help B3 or B0.** ECE rises (B3 0.0028 → 0.0052; B0 0.0038 → 0.0073) and so does log loss; Brier barely moves. The models are over-confident on validation patients (T > 1), but the test set is easier, so softening them costs calibration there. ResNet-50 is essentially unchanged (ECE 0.0023 → 0.0021).
+- **The ablation is the one consistent effect.** Label smoothing produces under-confident raw probabilities (test ECE 0.031), which temperature scaling repairs (0.0070).
+- The originally reported "ECE 0.0028 → 0.0027" used the superseded temperature (§7.2); those values are retained in `calibration_summary.csv` for reconciliation only.
+- **These calibration numbers carry little information.** 482–483 of 484 predictions fall in the two outermost bins.
 - Calibration cannot change AUROC; this was confirmed.
 - **Grad-CAM [E]:** examples are selected deterministically (most confident correct DME and Normal, worst-margin error). The randomisation test shows dependence on the trained classifier weights, but not clinical validity of the highlighted regions. No heatmap is offered as evidence of clinical reasoning.
 
@@ -182,14 +195,14 @@ Every row uses a different dataset, population, device, label definition and pro
 (c) ResNet-50 training and validation loss (selected epoch 30).
 No per-epoch logs survive for B0 or the label-smoothing run. Validation is the patient-disjoint training-time split; the test set was never used.
 
-**Figure 5.** Calibration on the official test set, raw vs temperature-scaled probabilities. Reliability points use 10 equal-width bins, with images per bin shown under each axis. Nearly all predictions lie in the outermost bins. Temperatures were fitted on a validation partition that overlaps training data.
+**Figure 5.** Calibration on the official test set, raw vs temperature-scaled probabilities. Reliability points use 10 equal-width bins, with images per bin shown under each axis. Nearly all predictions lie in the outermost bins. Temperatures were refit on the training-time validation split (n = 5,560); the test set was not used for fitting.
 
 **Audit Figure A1.** U-Net fluid segmentation collapsed to all-foreground (not a performance figure). Duke DME held-out subjects 06 and 07: input, grader-1 mask, prediction and probability map for the first fluid-positive and first fluid-free test scan, plus predicted vs true fluid fraction for all validation and test scans.
 
 ## 13. Table captions
 
 - **Table 1.** Dataset and experimental setup (`tables/table1_dataset_setup.md`).
-- **Table 2.** Verified within-project model performance, with 95% CIs, including the supplementary unseen pool and flagged tuned operating points (`tables/table2_within_project_performance.md`).
+- **Table 2.** Verified within-project model performance, with 95% CIs, including the supplementary unseen pool, refit tuned operating points and the superseded originals (`tables/table2_within_project_performance.md`).
 - **Table 3.** Published DME classifiers and the present model, with evaluation unit, cohort and comparability category; not a head-to-head comparison (`tables/table3_literature_comparison.md`).
 - **Table 4.** Not produced: segmentation evaluation invalid (`tables/table4_segmentation_NOT_PRODUCED.md`).
 - **Table 5.** Reproducibility and limitations (`tables/table5_reproducibility_limitations.md`).
@@ -207,7 +220,7 @@ No per-epoch logs survive for B0 or the label-smoothing run. Validation is the p
 - No external validation. Every result is internal to the Kermany dataset.
 - The official test set is small, balanced (prevalence 50%), and distributionally unlike the training data. PPV does not transfer to screening prevalence.
 - Patient is the finest grouping available; correlated B-scans from one eye or volume cannot be identified.
-- Tuned thresholds and temperatures are not valid (§7.2). The Kaggle split manifest was not saved.
+- The original tuned thresholds and temperatures were not valid (§7.2). They have been refit on the rebuilt training-time split; the refit depends on reproducing the scikit-learn 1.4.2 partition, which was confirmed by exact count matching rather than a saved manifest.
 - Per-image outputs were not saved originally; the reconstructed outputs come from a different software stack (agreement with every stored aggregate was confirmed).
 - The B0 training log is empty, so its exclusion of test patients is verified from code only. The B3 per-epoch log is a console reconstruction without accuracy.
 - Labels come from the public dataset folders. Kermany "DME" vs "NORMAL" is a different label definition from clinically graded DME in diabetic cohorts, and negatives exclude other pathology.
@@ -251,18 +264,33 @@ python research_outputs/scripts/10_final_checks.py
 
 Software versions, seeds and hardware are listed in `tables/table5_reproducibility_limitations.md`. Script 03 is the slow step (several CPU-hours on a 12-thread CPU).
 
+**Threshold/temperature refit (scripts 11–12).** Script 11 needs scikit-learn 1.4.2, which has no build for the project's Python 3.14, so it runs in an isolated Python 3.12 environment (created with uv). Script 12 then runs in the project environment. Rerun 04 and 08–10 afterwards; 04 picks up `refit_calibration_threshold.csv` automatically.
+
+```bash
+uv venv --python 3.12 .venv-sk142
+```
+```bash
+uv pip install --python .venv-sk142 "scikit-learn==1.4.2" "numpy==1.26.*" "pandas==2.2.*"
+```
+```bash
+.venv-sk142/Scripts/python research_outputs/scripts/11_rebuild_training_split.py
+```
+```bash
+python research_outputs/scripts/12_refit_calibration_threshold.py
+```
+
 ## 17. Results by provenance
 
 | Category | Items |
 |---|---|
 | Existing results [E] | `metrics.json` aggregates; Grad-CAM randomisation check; training logs; segmentation log values |
 | Independently reconstructed [R] | all test-set confusion matrices and metrics, AUROC, calibration metrics; segmentation Dice/IoU; split counts |
-| New analyses [N] | CIs and paired tests; duplicate and patient-overlap scan; dimension and border-artifact analyses; validation-split mismatch diagnosis; supplementary unseen-pool evaluation; segmentation failure-mode analysis; literature extraction |
-| Unverified [U] | B0 test-patient exclusion (log empty); exact overlap of the evaluation-time validation set with training; Zhu 2025 supplementary per-device results; Kermany device/acquisition details (from prior knowledge) |
+| New analyses [N] | CIs and paired tests; duplicate and patient-overlap scan; dimension and border-artifact analyses; validation-split mismatch diagnosis and measured contamination (84.3%); training-time split rebuild and threshold/temperature refit; supplementary unseen-pool evaluation; segmentation failure-mode analysis; literature extraction |
+| Unverified [U] | B0 test-patient exclusion (log empty); Zhu 2025 supplementary per-device results; Kermany device/acquisition details (from prior knowledge) |
 
 ## 18. Recommended future experiments
 
-1. Rebuild the training-time split with scikit-learn 1.4.2 (Python ≤ 3.12), save the manifest, and refit the threshold and temperature on that validation set only.
+1. ~~Rebuild the training-time split with scikit-learn 1.4.2 and refit the threshold and temperature.~~ **Done** (§7.2, scripts 11–12). Remaining: save the split manifest at training time in future runs, and pin scikit-learn in `requirements.txt`.
 2. Evaluate the frozen checkpoints on an external DME dataset from a different site or device, with patient-level labels.
 3. Save per-image predictions in `evaluate.py` for every future run.
 4. Re-train the U-Net with ungraded pixels masked out of the loss and metric, a positive-class weight, and a sanity check against all-foreground and all-background baselines.

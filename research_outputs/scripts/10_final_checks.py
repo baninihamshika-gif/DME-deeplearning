@@ -80,8 +80,10 @@ bad = 0
 for _, r in t2.iterrows():
     if "[supplementary" in r.Model:
         continue
-    thr = 0.5 if r["Probabilities / threshold"].startswith("raw") else float(r["Probabilities / threshold"].split(", ")[1].split(" ")[0])
-    p = perf[(perf.model == r.Model) & np.isclose(perf.threshold, thr)].iloc[0]
+    op = r["Probabilities / threshold"]
+    thr = 0.5 if op.startswith("raw") else float(op.split(", ")[1].split(" ")[0])
+    kind = "default" if op.startswith("raw") else ("refit" if "refit" in op else "superseded")
+    p = perf[(perf.model == r.Model) & np.isclose(perf.threshold, thr) & perf.threshold_name.str.startswith(kind)].iloc[0]
     bad += (int(r.TP), int(r.FP), int(r.TN), int(r.FN)) != (p.TP, p.FP, p.TN, p.FN)
     bad += not r["Accuracy (95% CI)"].startswith(f"{p.accuracy:.4f}")
     bad += not r["Sensitivity (95% CI)"].startswith(f"{p.sensitivity:.4f}")
