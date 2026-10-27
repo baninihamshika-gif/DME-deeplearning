@@ -1,19 +1,214 @@
-panel,model,metric,value,ci_lo,ci_hi
-a,EfficientNet-B3,accuracy,0.9979338842975206,0.9883907205423283,0.9996351866966928
-a,EfficientNet-B3,sensitivity,0.9958677685950412,0.9769687318462644,0.9992701868947906
-a,EfficientNet-B3,specificity,1.0,0.9843742430638972,1.0
-a,EfficientNet-B3,f1,0.9979296066252588,0.9937629937629938,1.0
-a,EfficientNet-B0,accuracy,0.9979338842975206,0.9883907205423283,0.9996351866966928
-a,EfficientNet-B0,sensitivity,0.9958677685950412,0.9769687318462644,0.9992701868947906
-a,EfficientNet-B0,specificity,1.0,0.9843742430638972,1.0
-a,EfficientNet-B0,f1,0.9979296066252588,0.9937629937629938,1.0
-a,ResNet-50,accuracy,0.9979338842975206,0.9883907205423283,0.9996351866966928
-a,ResNet-50,sensitivity,0.9958677685950412,0.9769687318462644,0.9992701868947906
-a,ResNet-50,specificity,1.0,0.9843742430638972,1.0
-a,ResNet-50,f1,0.9979296066252588,0.9937629937629938,1.0
-b,EfficientNet-B3,auroc_test,1.0,1.0,1.0
-b,EfficientNet-B3,auroc_excluded_pool,0.9964313905445256,0.9946265645363346,0.997849721931266
-b,EfficientNet-B0,auroc_test,1.0,1.0,1.0
-b,EfficientNet-B0,auroc_excluded_pool,0.9965728898735906,0.9949389831229424,0.997793799413254
-b,ResNet-50,auroc_test,1.0,1.0,1.0
-b,ResNet-50,auroc_excluded_pool,0.99702793432286,0.9953573008568783,0.9982448672789688
+panel,source,model,metric,value,ci_lo,ci_hi,headline
+a,This project,EfficientNet-B3,accuracy,0.9979338842975206,0.9883907205423283,0.9996351866966928,True
+a,This project,EfficientNet-B3,sensitivity,0.9958677685950412,0.9769687318462644,0.9992701868947906,True
+a,This project,EfficientNet-B3,specificity,1.0,0.9843742430638972,1.0,True
+a,This project,EfficientNet-B3,f1,0.9979296066252588,0.9937629937629938,1.0,True
+a,This project,EfficientNet-B3,auroc,1.0,1.0,1.0,True
+a_other_rows,This project,EfficientNet-B3,accuracy,0.9724110355857656,,,False
+a_other_rows,This project,EfficientNet-B3,accuracy,0.9853862212943632,,,False
+a_other_rows,This project,EfficientNet-B3,accuracy,0.7333333333333333,,,False
+a_other_rows,This project,EfficientNet-B3,sensitivity,0.9644527595884004,,,False
+a_other_rows,This project,EfficientNet-B3,sensitivity,0.9591836734693876,,,False
+a_other_rows,This project,EfficientNet-B3,sensitivity,1.0,,,False
+a_other_rows,This project,EfficientNet-B3,specificity,0.9829563061667184,,,False
+a_other_rows,This project,EfficientNet-B3,specificity,0.9969879518072288,,,False
+a_other_rows,This project,EfficientNet-B3,specificity,0.4666666666666667,,,False
+a_other_rows,This project,EfficientNet-B3,f1,0.9755174452986398,,,False
+a_other_rows,This project,EfficientNet-B3,f1,0.9757785467128028,,,False
+a_other_rows,This project,EfficientNet-B3,f1,0.7894736842105263,,,False
+a_other_rows,This project,EfficientNet-B3,auroc,0.9964313905445256,,,False
+a_other_rows,This project,EfficientNet-B3,auroc,0.999282845668388,,,False
+a_other_rows,This project,EfficientNet-B3,auroc,1.0,,,False
+a,This project,EfficientNet-B0,accuracy,0.9979338842975206,0.9883907205423283,0.9996351866966928,True
+a,This project,EfficientNet-B0,sensitivity,0.9958677685950412,0.9769687318462644,0.9992701868947906,True
+a,This project,EfficientNet-B0,specificity,1.0,0.9843742430638972,1.0,True
+a,This project,EfficientNet-B0,f1,0.9979296066252588,0.9937629937629938,1.0,True
+a,This project,EfficientNet-B0,auroc,1.0,1.0,1.0,True
+a_other_rows,This project,EfficientNet-B0,accuracy,0.9979338842975206,,,False
+a_other_rows,This project,EfficientNet-B0,accuracy,0.9712115153938424,,,False
+a_other_rows,This project,EfficientNet-B0,accuracy,0.977035490605428,,,False
+a_other_rows,This project,EfficientNet-B0,accuracy,0.8666666666666667,,,False
+a_other_rows,This project,EfficientNet-B0,sensitivity,0.9958677685950412,,,False
+a_other_rows,This project,EfficientNet-B0,sensitivity,0.9574368568755848,,,False
+a_other_rows,This project,EfficientNet-B0,sensitivity,0.9319727891156464,,,False
+a_other_rows,This project,EfficientNet-B0,sensitivity,1.0,,,False
+a_other_rows,This project,EfficientNet-B0,specificity,1.0,,,False
+a_other_rows,This project,EfficientNet-B0,specificity,0.9894638983576076,,,False
+a_other_rows,This project,EfficientNet-B0,specificity,0.9969879518072288,,,False
+a_other_rows,This project,EfficientNet-B0,specificity,0.7333333333333333,,,False
+a_other_rows,This project,EfficientNet-B0,f1,0.9979296066252588,,,False
+a_other_rows,This project,EfficientNet-B0,f1,0.9742979533555448,,,False
+a_other_rows,This project,EfficientNet-B0,f1,0.96140350877193,,,False
+a_other_rows,This project,EfficientNet-B0,f1,0.8823529411764706,,,False
+a_other_rows,This project,EfficientNet-B0,auroc,1.0,,,False
+a_other_rows,This project,EfficientNet-B0,auroc,0.9965728898735906,,,False
+a_other_rows,This project,EfficientNet-B0,auroc,0.9933611999016474,,,False
+a_other_rows,This project,EfficientNet-B0,auroc,1.0,,,False
+a,This project,ResNet-50,accuracy,0.9979338842975206,0.9883907205423283,0.9996351866966928,True
+a,This project,ResNet-50,sensitivity,0.9958677685950412,0.9769687318462644,0.9992701868947906,True
+a,This project,ResNet-50,specificity,1.0,0.9843742430638972,1.0,True
+a,This project,ResNet-50,f1,0.9979296066252588,0.9937629937629938,1.0,True
+a,This project,ResNet-50,auroc,1.0,1.0,1.0,True
+a_other_rows,This project,ResNet-50,accuracy,0.9979338842975206,,,False
+a_other_rows,This project,ResNet-50,accuracy,0.9752099160335864,,,False
+a_other_rows,This project,ResNet-50,accuracy,0.9791231732776616,,,False
+a_other_rows,This project,ResNet-50,accuracy,0.7,,,False
+a_other_rows,This project,ResNet-50,sensitivity,0.9958677685950412,,,False
+a_other_rows,This project,ResNet-50,sensitivity,0.9653882132834424,,,False
+a_other_rows,This project,ResNet-50,sensitivity,0.9319727891156464,,,False
+a_other_rows,This project,ResNet-50,sensitivity,1.0,,,False
+a_other_rows,This project,ResNet-50,specificity,1.0,,,False
+a_other_rows,This project,ResNet-50,specificity,0.9882243569879144,,,False
+a_other_rows,This project,ResNet-50,specificity,1.0,,,False
+a_other_rows,This project,ResNet-50,specificity,0.4,,,False
+a_other_rows,This project,ResNet-50,f1,0.9979296066252588,,,False
+a_other_rows,This project,ResNet-50,f1,0.9779673063255152,,,False
+a_other_rows,This project,ResNet-50,f1,0.9647887323943662,,,False
+a_other_rows,This project,ResNet-50,f1,0.7692307692307693,,,False
+a_other_rows,This project,ResNet-50,auroc,1.0,,,False
+a_other_rows,This project,ResNet-50,auroc,0.99702793432286,,,False
+a_other_rows,This project,ResNet-50,auroc,0.9981353987378084,,,False
+a_other_rows,This project,ResNet-50,auroc,1.0,,,False
+a,Tang 2021,2D ResNet-18 (2D multitask CNN),accuracy,0.972,,,True
+a,Tang 2021,2D ResNet-18 (2D multitask CNN),sensitivity,0.887,,,True
+a,Tang 2021,2D ResNet-18 (2D multitask CNN),specificity,0.992,,,True
+a,Tang 2021,2D ResNet-18 (2D multitask CNN),f1,,,,True
+a,Tang 2021,2D ResNet-18 (2D multitask CNN),auroc,0.94,0.934,0.945,True
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.964,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.995,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.936,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.935,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.963,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.926,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.964,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.957,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.969,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.986,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.982,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.96,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.936,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.968,,,False
+a_other_rows,Tang 2021,Tang 2021,accuracy,0.961,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.8740000000000001,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.8140000000000001,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.895,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.86,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.927,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,1.0,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.976,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.964,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.943,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.993,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.929,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.955,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.804,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.885,,,False
+a_other_rows,Tang 2021,Tang 2021,sensitivity,0.975,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,1.0,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.998,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.963,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,1.0,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.989,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.913,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.897,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.934,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.986,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.917,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.987,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.963,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.994,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.988,,,False
+a_other_rows,Tang 2021,Tang 2021,specificity,0.92,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.937,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.906,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.929,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.93,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.958,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.956,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.936,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.949,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.965,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.954,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.958,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.959,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.899,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.937,,,False
+a_other_rows,Tang 2021,Tang 2021,auroc,0.947,,,False
+a,Zhu 2025,"Custom 3D CNN initialised from Models Genesis, two FC layers",accuracy,0.961,,,True
+a,Zhu 2025,"Custom 3D CNN initialised from Models Genesis, two FC layers",sensitivity,0.936,,,True
+a,Zhu 2025,"Custom 3D CNN initialised from Models Genesis, two FC layers",specificity,0.97,,,True
+a,Zhu 2025,"Custom 3D CNN initialised from Models Genesis, two FC layers",f1,0.922,,,True
+a,Zhu 2025,"Custom 3D CNN initialised from Models Genesis, two FC layers",auroc,0.99,0.983,0.996,True
+a_other_rows,Zhu 2025,Zhu 2025,accuracy,0.864,,,False
+a_other_rows,Zhu 2025,Zhu 2025,accuracy,0.729,,,False
+a_other_rows,Zhu 2025,Zhu 2025,accuracy,0.842,,,False
+a_other_rows,Zhu 2025,Zhu 2025,accuracy,0.974,,,False
+a_other_rows,Zhu 2025,Zhu 2025,accuracy,0.913,,,False
+a_other_rows,Zhu 2025,Zhu 2025,accuracy,0.925,,,False
+a_other_rows,Zhu 2025,Zhu 2025,sensitivity,0.873,,,False
+a_other_rows,Zhu 2025,Zhu 2025,sensitivity,0.458,,,False
+a_other_rows,Zhu 2025,Zhu 2025,sensitivity,0.818,,,False
+a_other_rows,Zhu 2025,Zhu 2025,sensitivity,0.928,,,False
+a_other_rows,Zhu 2025,Zhu 2025,sensitivity,0.862,,,False
+a_other_rows,Zhu 2025,Zhu 2025,sensitivity,0.91,,,False
+a_other_rows,Zhu 2025,Zhu 2025,specificity,0.849,,,False
+a_other_rows,Zhu 2025,Zhu 2025,specificity,1.0,,,False
+a_other_rows,Zhu 2025,Zhu 2025,specificity,0.879,,,False
+a_other_rows,Zhu 2025,Zhu 2025,specificity,0.98,,,False
+a_other_rows,Zhu 2025,Zhu 2025,specificity,0.935,,,False
+a_other_rows,Zhu 2025,Zhu 2025,specificity,0.937,,,False
+a_other_rows,Zhu 2025,Zhu 2025,f1,0.89,,,False
+a_other_rows,Zhu 2025,Zhu 2025,f1,0.629,,,False
+a_other_rows,Zhu 2025,Zhu 2025,f1,0.864,,,False
+a_other_rows,Zhu 2025,Zhu 2025,f1,0.9,,,False
+a_other_rows,Zhu 2025,Zhu 2025,f1,0.855,,,False
+a_other_rows,Zhu 2025,Zhu 2025,f1,0.915,,,False
+a_other_rows,Zhu 2025,Zhu 2025,auroc,0.933,,,False
+a_other_rows,Zhu 2025,Zhu 2025,auroc,0.904,,,False
+a_other_rows,Zhu 2025,Zhu 2025,auroc,0.916,,,False
+a_other_rows,Zhu 2025,Zhu 2025,auroc,0.989,,,False
+a_other_rows,Zhu 2025,Zhu 2025,auroc,0.967,,,False
+a_other_rows,Zhu 2025,Zhu 2025,auroc,0.971,,,False
+a,Li F 2019,"Ensemble of four improved (dilated) ResNet50, ImageNet-pretrained",accuracy,0.988,,,True
+a,Li F 2019,"Ensemble of four improved (dilated) ResNet50, ImageNet-pretrained",sensitivity,0.986,,,True
+a,Li F 2019,"Ensemble of four improved (dilated) ResNet50, ImageNet-pretrained",specificity,0.991,,,True
+a,Li F 2019,"Ensemble of four improved (dilated) ResNet50, ImageNet-pretrained",f1,,,,True
+a,Li F 2019,"Ensemble of four improved (dilated) ResNet50, ImageNet-pretrained",auroc,0.996,0.995,0.997,True
+a_other_rows,Li F 2019,Li F 2019,accuracy,0.971,,,False
+a_other_rows,Li F 2019,Li F 2019,sensitivity,0.901,,,False
+a_other_rows,Li F 2019,Li F 2019,sensitivity,1.0,,,False
+a_other_rows,Li F 2019,Li F 2019,specificity,0.982,,,False
+a_other_rows,Li F 2019,Li F 2019,specificity,1.0,,,False
+a_other_rows,Li F 2019,Li F 2019,auroc,0.978,,,False
+a,Rodríguez-Miguel 2024,"Hybrid CNN-RNN (22 parallel custom CNNs + bidirectional RNN), Model 2, threshold 1 (Youden)",accuracy,,,,True
+a,Rodríguez-Miguel 2024,"Hybrid CNN-RNN (22 parallel custom CNNs + bidirectional RNN), Model 2, threshold 1 (Youden)",sensitivity,0.905,,,True
+a,Rodríguez-Miguel 2024,"Hybrid CNN-RNN (22 parallel custom CNNs + bidirectional RNN), Model 2, threshold 1 (Youden)",specificity,0.908,,,True
+a,Rodríguez-Miguel 2024,"Hybrid CNN-RNN (22 parallel custom CNNs + bidirectional RNN), Model 2, threshold 1 (Youden)",f1,,,,True
+a,Rodríguez-Miguel 2024,"Hybrid CNN-RNN (22 parallel custom CNNs + bidirectional RNN), Model 2, threshold 1 (Youden)",auroc,0.94,0.91,0.97,True
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,accuracy,0.915,,,False
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,accuracy,0.89,,,False
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,accuracy,0.88,,,False
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,sensitivity,0.889,,,False
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,sensitivity,0.921,,,False
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,sensitivity,0.81,,,False
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,specificity,0.933,,,False
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,specificity,0.831,,,False
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,specificity,0.97,,,False
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,auroc,0.96,,,False
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,auroc,0.944,,,False
+a_other_rows,Rodríguez-Miguel 2024,Rodríguez-Miguel 2024,auroc,0.962,,,False
+a,Singh & Gorantla 2020,Hierarchical Ensemble of CNNs (ResNet/DenseNet/SE-ResNet/SqueezeNet learners with gating CNNs),accuracy,0.9667,,,True
+a,Singh & Gorantla 2020,Hierarchical Ensemble of CNNs (ResNet/DenseNet/SE-ResNet/SqueezeNet learners with gating CNNs),sensitivity,0.975,,,True
+a,Singh & Gorantla 2020,Hierarchical Ensemble of CNNs (ResNet/DenseNet/SE-ResNet/SqueezeNet learners with gating CNNs),specificity,0.9563,,,True
+a,Singh & Gorantla 2020,Hierarchical Ensemble of CNNs (ResNet/DenseNet/SE-ResNet/SqueezeNet learners with gating CNNs),f1,0.9701,,,True
+a,Singh & Gorantla 2020,Hierarchical Ensemble of CNNs (ResNet/DenseNet/SE-ResNet/SqueezeNet learners with gating CNNs),auroc,0.9654,,,True
+a_other_rows,Singh & Gorantla 2020,Singh & Gorantla 2020,accuracy,0.9612,,,False
+a_other_rows,Singh & Gorantla 2020,Singh & Gorantla 2020,accuracy,0.9547,,,False
+a_other_rows,Singh & Gorantla 2020,Singh & Gorantla 2020,accuracy,0.9676,,,False
+a_other_rows,Singh & Gorantla 2020,Singh & Gorantla 2020,sensitivity,0.9632,,,False
+a_other_rows,Singh & Gorantla 2020,Singh & Gorantla 2020,sensitivity,0.9468,,,False
+a_other_rows,Singh & Gorantla 2020,Singh & Gorantla 2020,sensitivity,0.9788,,,False
+a_other_rows,Singh & Gorantla 2020,Singh & Gorantla 2020,specificity,0.9584,,,False
+a_other_rows,Singh & Gorantla 2020,Singh & Gorantla 2020,specificity,0.9719,,,False
+a_other_rows,Singh & Gorantla 2020,Singh & Gorantla 2020,specificity,0.9449,,,False
+a_other_rows,Singh & Gorantla 2020,Singh & Gorantla 2020,f1,0.9609,,,False

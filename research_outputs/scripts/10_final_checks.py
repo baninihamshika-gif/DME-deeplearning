@@ -49,9 +49,26 @@ check("1_reconstructed_equals_reported", rv.match.all(), f"{int(rv.match.sum())}
 perf = pd.read_csv(DATA / "table2_within_project_performance.csv")
 f1 = pd.read_csv(FIG / "figure1_within_project_performance_plotted_values.csv")
 bad = 0
+pp = pd.read_csv(DATA / "per_paper_comparison.csv")
 for _, r in f1[f1.panel == "a"].iterrows():
-    t = perf[(perf.model == r.model) & (perf.threshold == 0.5)].iloc[0]
-    bad += not (np.isclose(r.value, t[r.metric]) and np.isclose(r.ci_lo, t[f"{r.metric}_ci_lo"]) and np.isclose(r.ci_hi, t[f"{r.metric}_ci_hi"]))
+    if r.source == "This project":
+        t = perf[(perf.model == r.model) & (perf.threshold == 0.5)].iloc[0]
+        bad += not (np.isclose(r.value, t[r.metric]) and np.allclose(r.ci_lo, t[f"{r.metric}_ci_lo"], equal_nan=True) and np.allclose(r.ci_hi, t[f"{r.metric}_ci_hi"], equal_nan=True))
+    else:  # paper bars = that paper's headline row
+        t = pp[(pp.paper == r.source) & pp.headline].iloc[0]
+        bad += not np.allclose(r.value, t[r.metric], equal_nan=True)
+for _, r in f1[f1.panel == "a_other_rows"].iterrows():  # every dot is a value of that source
+    bad += not np.isclose(pp[pp.paper == r.source][r.metric].dropna(), r.value).any()
+f2p = pd.read_csv(FIG / "figure2_roc_curves_plotted_values.csv")
+for _, r in f2p[f2p.panel == "a_points"].iterrows():  # published / project operating points
+    src = pp[pp.paper == ("This project" if r.model.startswith("This project") else r.model)]
+    bad += not (np.isclose(1 - src.specificity, r.fpr) & np.isclose(src.sensitivity, r.tpr)).any()
+t6 = pd.read_csv(TAB / "table6_per_paper_comparison.csv").set_index("Item")
+for s in t6.columns:  # Table 6 headline cells = per_paper_comparison headline rows
+    h = pp[(pp.paper == s) & pp.headline].iloc[0]
+    for m, lab in (("accuracy", "Accuracy"), ("sensitivity", "Sensitivity"), ("specificity", "Specificity"), ("f1", "F1"), ("auroc", "AUROC")):
+        cell = str(t6.loc[f"Headline {lab}", s]).split(" ")[0]
+        bad += not ((cell == "NR" and pd.isna(h[m])) or (cell != "NR" and np.isclose(float(cell), h[m], atol=5e-4)))
 exc_p = DATA / "supplementary_excluded_pool_performance.csv"
 if exc_p.exists():
     ex = pd.read_csv(exc_p)

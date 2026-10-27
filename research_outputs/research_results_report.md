@@ -227,11 +227,74 @@ Sources were read in full: Tang et al. 2021 (PMC full text plus figshare supplem
 
 **Figure 3** therefore shows published AUROCs as a grouped forest-style display:
 
-- this project;
+- this project (internal test sets, and the external OCTDL and Duke 2014 sets);
 - Tang 2021 and Li 2019 B-scan rows (category B);
-- volume- or cube-level results (Tang, Zhu, Rodríguez-Miguel), separated and marked as context only (category C).
+- volume- or cube-level results (Tang, Zhu, Rodríguez-Miguel), separated and marked as context only (category C);
+- Singh & Gorantla 2020 (DMENet), fundus photographs, as a different-modality reference only (category D).
 
 It includes **no cross-study statistical test and no relative-improvement claim**. The external-validation results of these papers come from data this project has never been evaluated on (except Li 2019's Duke 2014 rows, which use a different protocol).
+
+### 8.1 This project and each paper, value by value [N]
+
+Every figure and table of this report now places this project and the five papers in the same graph or table: Figures 1–3, Table 3 and Table 6. Figures 4, 5 and A1 carry a note instead, because none of the five papers reports learning curves, calibration or a fluid-segmentation Dice; their full texts were searched for these. All values come from `research_outputs/data/per_paper_comparison.csv`, built by `scripts/14_per_paper_comparison.py` from `literature_extraction.csv` and the project's result CSVs. Nothing is typed in by hand.
+
+**How the pairs are formed.** The rules were fixed before plotting:
+
+- **Headline row per paper:** the internal B-scan/image-level result if the paper reports one (Tang Suppl. S1 Spectralis, Li Table 6, Singh Table 3). Otherwise it is the paper's main-text primary result (Zhu Table 3 Testing, Rodríguez-Miguel Table 2 Model 2).
+- **All other rows** of the paper are kept. They are shown as dots and as a min–max range, so no row is dropped.
+- **Unit-matched project value:** an image-level headline is set beside the project's official test (with the unseen pool and OCTDL also shown). A volume-level headline is set beside the project's Duke 2014 volume-level result (EfficientNet-B3, threshold 0.5, max rule, n = 30).
+
+Every pair differs in data, population, device, label definition and often evaluation unit. The numbers are placed side by side for reading, not ranked, and no cross-study test was computed.
+
+| Source | Unit | Accuracy | Sensitivity | Specificity | F1 | AUROC |
+|---|---|---|---|---|---|---|
+| **This project**, EfficientNet-B3, official test (n = 484) | B-scan | 0.998 | 0.996 | 1.000 | 0.998 | 1.000 |
+| This project, unseen pool (n = 7,503) | B-scan | see Table 2 | | | | 0.996 (0.995–0.998) |
+| This project, OCTDL external (n = 479) | B-scan | | 0.959 | 0.997 | | 0.999 |
+| This project, Duke 2014 external (n = 30 volumes, max rule) | volume | | 1.000 | 0.467 | | 1.000 |
+| **Tang 2021** headline (Suppl. S1, Spectralis, internal) | B-scan | 0.972 | 0.887 | 0.992 | NR | 0.940 (0.934–0.945) |
+| **Zhu 2025** headline (Table 3, hold-out test) | volume | 0.961 | 0.936 | 0.970 | 0.922 | 0.990 (0.983–0.996) |
+| **Li F 2019** headline (Table 6, DME vs NORMAL) | B-scan | 0.988 | 0.986 | 0.991 | NR | 0.996 (0.995–0.997) |
+| **Rodríguez-Miguel 2024** headline (Table 2, Model 2, screening cohort) | cube | NR | 0.905 | 0.908 | NR | 0.940 (0.910–0.970) |
+| **Singh & Gorantla 2020** headline (Table 3, fundus) | fundus image | 0.967 | 0.975 | 0.956 | 0.970* | 0.965 |
+
+\* Singh & Gorantla's F1 is the No-DME class F1 (§8).
+
+**Tang 2021 (16 rows; Figures 1–3).**
+
+- Tang's B-scan rows: internal AUROC 0.940 and 0.937, external 0.899–0.959. The project's B-scan values are 1.000 (official test), 0.996 (unseen pool) and 0.999 (OCTDL).
+- Tang's volume rows: AUROC 0.906–0.965. The project's single volume-level set (Duke 2014, 30 volumes) gives AUROC 1.000, but specificity only 0.467 at 0.5 with the max rule.
+- **Why the numbers differ:**
+  - Tang's DME label includes retinal thickening and hard exudates in clinically graded diabetic eyes, on three devices and six external centres.
+  - The project's sets are curated public B-scans with folder labels.
+  - The higher project values therefore do not show a better model. They are measured on easier, different data.
+
+**Zhu 2025 (7 rows, volume level, category C).**
+
+- Zhu: hold-out AUROC 0.990, sensitivity 0.936, specificity 0.970. External AUROC is 0.904–0.933, and sensitivity drops to 0.458 at one centre.
+- Project, Duke 2014 volume level: AUROC 1.000 and sensitivity 1.000, but specificity 0.467 with the pre-specified max rule. The secondary mean rule gives 0.800 / 1.000.
+- The project has no validated volume aggregation rule, and its volume evidence is 30 volumes. Zhu's is 956 test and 1,509 external volumes.
+
+**Li F 2019 (3 DME rows; the closest analogue).**
+
+- Li's Table 6 values (0.988 / 0.986 / 0.991, AUROC 0.996) are close to the project's unseen-pool AUROC (0.996) and below its official-test values (1.000). Li's population is different, and its CIs cannot be per-image test intervals (§8).
+- On the same 30 Duke 2014 volumes, Li reports 30/30 correct after fine-tuning on Duke with leave-three-out cross-validation. The project, with no Duke training, gives AUROC 1.000 but specificity 0.467 at the max rule.
+- The protocols differ, so these are not the same measurement.
+
+**Rodríguez-Miguel 2024 (7 rows, cube level).**
+
+- At real screening prevalence (2.37% DME, 5,314 cubes), sensitivity is 0.810–0.921 and specificity 0.831–0.970, depending on the threshold, with AUROC 0.940. On the ground-truth test split, AUROC is 0.944–0.962.
+- This is the only one of the six sources evaluated at realistic prevalence. All project test sets are balanced or near-balanced, so the project's predictive values would fall at screening prevalence (§15).
+
+**Singh & Gorantla 2020 (4 rows, fundus; category D).**
+
+- Accuracy 0.955–0.968, sensitivity 0.947–0.979, specificity 0.945–0.972, AUROC 0.965.
+- These are fundus-photograph results with a hard-exudate-based DME label, and its Table 3 does not match its own confusion matrix (§8). It is shown in Figures 1–3 for completeness, marked as a different modality, and is not comparable with any OCT result.
+
+**What the papers report that the project does not, and the reverse.**
+
+- Tang, Zhu, Rodríguez-Miguel and Li report external, multi-device or screening-cohort results at the volume level, which the project has only on 30 Duke volumes.
+- The project reports learning curves (Figure 4), calibration (Figure 5) and fluid segmentation (§10). None of the five papers reports any of these (Table 6, NR / NA).
 
 ## 9. 2D versus 3D OCT
 
@@ -298,18 +361,21 @@ Source: `calibration_summary.csv`, Figure 5.
 
 ## 12. Figure captions
 
-**Figure 1.** Performance of deep learning models for binary DME classification on the held-out test set.
-(a) Accuracy, sensitivity, specificity and F1 at threshold 0.5 for EfficientNet-B3, EfficientNet-B0 and ResNet-50 on the identical official Kermany OCT2017 test split (242 DME / 242 Normal B-scans; DME = positive class). Error bars are Wilson 95% CIs (F1: class-stratified bootstrap).
-(b) AUROC on the official test set (no meaningful CI: perfect separation) and on the supplementary pool of unseen excluded-patient images (patient-cluster bootstrap 95% CI).
-The three architectures are statistically indistinguishable (McNemar p = 1.00).
+**Figure 1.** Performance of this project's models and the five published DME classifiers, metric by metric (one graph).
+Accuracy, sensitivity, specificity, F1 and AUROC.
+- **Project bars:** EfficientNet-B3, EfficientNet-B0 and ResNet-50 at threshold 0.5 on the official Kermany OCT2017 test split (242 DME / 242 Normal B-scans; DME = positive class). Error bars are Wilson 95% CIs (F1: class-stratified bootstrap).
+- **Paper bars:** each paper's headline row (§8.1). The black bracket gives the min–max over all of that paper's DME-presence rows; NR marks a metric the headline row does not report.
+- **Dots:** every other row of the same source. For the project, these are the same model on the unseen pool, OCTDL and Duke 2014 (volume level).
+- Zhu and Rodríguez-Miguel headlines are volume level, and Singh & Gorantla use fundus photographs.
+The three project architectures are statistically indistinguishable (McNemar p = 1.00). Across sources this is not a head-to-head comparison, and no cross-study test was performed.
 
-**Figure 2.** Receiver operating characteristic curves for DME classification.
-(a) Official test set: all three curves follow the left and top axes (AUROC 1.000).
-(b) Supplementary unseen pool, with an inset magnifying FPR 0–0.10.
-All curves are computed from continuous raw softmax P(DME); temperature scaling would not change them. The dashed diagonal is a random classifier.
+**Figure 2.** Receiver operating characteristic: this project's curves and the five papers' published operating points (one graph).
+(a) Project ROC curves for all three models: official test set (thin; all follow the left and top axes, AUROC 1.000) and supplementary unseen pool (thick). EfficientNet-B3's operating points at 0.5 are marked on the official test, unseen pool, OCTDL and Duke 2014 (volume) sets. Every published DME-presence row with both sensitivity and specificity is plotted as a point: one marker shape and colour per paper, filled = image level, hollow = volume level, large black-edged = headline row.
+(b) The same graph, zoomed.
+Project curves are computed from continuous raw softmax P(DME); temperature scaling would not change them. The papers publish operating points, not ROC coordinates, and their printed ROC images were not digitised. The dashed diagonal is a random classifier.
 
 **Figure 3.** Reported performance of published DME classification systems and the present 2D OCT model.
-AUROC with 95% CI as published (Tang 2021 Supplementary Table S1 and main Table 2; Li 2019 Table 6; Zhu 2025 Table 3; Rodríguez-Miguel 2024 Results) or computed (this project). Li 2019's printed CIs are narrower than its test size supports (§8). The fundus-based DMENet is not plotted. Circles = B-scan-level evaluation; squares = volume-level evaluation (context only).
+AUROC with 95% CI as published (Tang 2021 Supplementary Table S1 and main Table 2; Li 2019 Table 6; Zhu 2025 Table 3; Rodríguez-Miguel 2024 Results; Singh & Gorantla 2020 Table 3) or computed (this project: official test, unseen pool, OCTDL and Duke 2014). Li 2019's printed CIs are narrower than its test size supports (§8). DMENet uses fundus photographs and is shown as a different-modality reference only (category D). Circles = B-scan-level evaluation; squares = volume-level evaluation (context only).
 Every row uses a different dataset, population, device, label definition and protocol. The figure shows research context, not a ranking, and no cross-study test was performed.
 
 **Figure 4.** Training and validation performance across training epochs.
@@ -318,10 +384,11 @@ Every row uses a different dataset, population, device, label definition and pro
 (c) ResNet-50 training and validation loss (selected epoch 30).
 (d) EfficientNet-B0 and B3 + label-smoothing training and validation loss (selected epochs 19 and 13), parsed from their Kaggle console logs (`20260920T095427Z`, `20260922T160023Z`). Both runs early-stopped (24 and 18 epochs). The label-smoothed loss is on a different scale.
 The selected epochs agree with the checkpoints: LS peaks at epoch 13 (0.9952), and B0's epoch 19 is one of four epochs tied at 0.9950 (to four decimals). Validation is the patient-disjoint training-time split; the test set was never used.
+Comparison with the five papers: none reports learning curves (full texts searched), so there are no published values to place on this figure (Table 6).
 
-**Figure 5.** Calibration on the official test set, raw vs temperature-scaled probabilities. Reliability points use 10 equal-width bins, with images per bin shown under each axis. Nearly all predictions lie in the outermost bins. Temperatures were refit on the training-time validation split (n = 5,560); the test set was not used for fitting.
+**Figure 5.** Calibration on the official test set, raw vs temperature-scaled probabilities. Reliability points use 10 equal-width bins, with images per bin shown under each axis. Nearly all predictions lie in the outermost bins. Temperatures were refit on the training-time validation split (n = 5,560); the test set was not used for fitting. Comparison with the five papers: none reports a calibration analysis (reliability diagram, ECE or Brier), so there are no published values to place on this figure (Table 6).
 
-**Audit Figure A1.** U-Net fluid segmentation collapsed to all-foreground (not a performance figure). Duke DME held-out subjects 06 and 07: input, grader-1 mask, prediction and probability map for the first fluid-positive and first fluid-free test scan, plus predicted vs true fluid fraction for all validation and test scans.
+**Audit Figure A1.** U-Net fluid segmentation collapsed to all-foreground (not a performance figure). Duke DME held-out subjects 06 and 07: input, grader-1 mask, prediction and probability map for the first fluid-positive and first fluid-free test scan, plus predicted vs true fluid fraction for all validation and test scans. Comparison with the five papers: all five are classification-only (Tang 2021 states it is segmentation-free), so no published Dice exists to compare with.
 
 ## 13. Table captions
 
@@ -330,6 +397,7 @@ The selected epochs agree with the checkpoints: LS peaks at epoch 13 (0.9952), a
 - **Table 3.** Published DME classifiers and the present model, with evaluation unit, cohort and comparability category; not a head-to-head comparison (`tables/table3_literature_comparison.md`).
 - **Table 4.** Not produced for the original checkpoint, whose evaluation is invalid (`tables/table4_segmentation_NOT_PRODUCED.md`). The note points to the retrained model's results (§10.2), which are reported in `segmentation_retrain_report.md`.
 - **Table 5.** Reproducibility and limitations (`tables/table5_reproducibility_limitations.md`).
+- **Table 6.** This project and each of the five papers side by side: modality, unit, devices, number of rows, headline result with n, headline accuracy / sensitivity / specificity / F1 / AUROC, the min–max of each metric over all rows, the unit-matched project value, and whether learning curves, calibration and segmentation are reported (`tables/table6_per_paper_comparison.md`). Not a head-to-head comparison.
 
 ## 14. Scientific interpretation
 
@@ -338,6 +406,7 @@ The selected epochs agree with the checkpoints: LS peaks at epoch 13 (0.9952), a
 - The supplementary evaluation on unseen same-dataset images (§5) gives a more conservative internal estimate.
 - The architecture comparison is uninformative: the models are indistinguishable.
 - Relative to the literature, the project's figures **cannot** be read as better than Tang 2021, Zhu 2025 or Rodríguez-Miguel 2024. Those studies used clinically graded diabetic cohorts with harder label definitions, volume-level or multi-device evaluation, real-world prevalence, and genuine external or screening test sets.
+- Paper by paper (§8.1, Table 6), the project's B-scan values sit at or above the published B-scan values. At the volume level, its 30-volume Duke result has much lower specificity (0.467 at the max rule) than the volume-level papers. The B-scan gap reflects easier, curated data rather than a stronger model.
 - The closest published analogue, Li F 2019 (single Spectralis B-scans, DME vs NORMAL, patient-disjoint test), reports AUROC 0.996 in a different population. Results of this magnitude on curated B-scan sets are therefore not unusual. Its printed CIs cannot be reconciled with its test size, and no cross-study test was performed.
 
 ## 15. Limitations

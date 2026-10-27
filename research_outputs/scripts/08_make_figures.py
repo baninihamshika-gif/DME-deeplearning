@@ -34,6 +34,24 @@ HATCH = {"EfficientNet-B3": "", "EfficientNet-B0": "//", "ResNet-50": ".."}
 INK, INK2, GRID = "#0b0b0b", "#52514e", "#e4e3df"
 MODELS = list(C)
 
+# The five published papers (Phase C). Colours are distinct from the three project models;
+# DMENet uses fundus photographs (different modality), so it is grey.
+PAPERS = ["Tang 2021", "Zhu 2025", "Li F 2019", "Rodríguez-Miguel 2024", "Singh & Gorantla 2020"]
+PC = {"Tang 2021": "#8e5bd0", "Zhu 2025": "#c98a00", "Li F 2019": "#c2418f", "Rodríguez-Miguel 2024": "#7a5230", "Singh & Gorantla 2020": "#8a8984"}
+PMK = {"Tang 2021": "P", "Zhu 2025": "s", "Li F 2019": "^", "Rodríguez-Miguel 2024": "D", "Singh & Gorantla 2020": "X"}
+PNOTE = {"Tang 2021": "OCT, B-scan + volume", "Zhu 2025": "OCT, volume", "Li F 2019": "OCT, B-scan", "Rodríguez-Miguel 2024": "OCT, cube",
+         "Singh & Gorantla 2020": "fundus photo, different modality"}
+NOT_REPORTED = ("Comparison with the five papers: Tang 2021, Zhu 2025, Li F 2019, Rodríguez-Miguel 2024 and Singh & Gorantla 2020 "
+                "report no {what} (full text searched; NR), so no published values can be placed on this figure.")
+
+
+def per_paper():
+    return pd.read_csv(DATA / "per_paper_comparison.csv")
+
+
+def paper_label(p):
+    return f"{p} ({PNOTE[p]})"
+
 plt.rcParams.update({
     "font.family": "DejaVu Sans", "font.size": 9, "axes.titlesize": 10, "axes.labelsize": 9,
     "axes.edgecolor": INK2, "axes.labelcolor": INK, "xtick.color": INK2, "ytick.color": INK2,
@@ -51,92 +69,121 @@ def save(fig, name, plotted: pd.DataFrame):
 
 # --------------------------------------------------------------------------- Figure 1
 def figure1():
+    """One graph: the three project models (official test) and the five papers' headline rows, metric by metric.
+    Bars = headline value; dots = every other DME-presence row of that source; bracket = min-max over all rows."""
     perf = pd.read_csv(DATA / "table2_within_project_performance.csv")
     perf = perf[(perf.threshold == 0.5) & perf.model.isin(MODELS)].set_index("model").loc[MODELS]
-    exc_path = DATA / "supplementary_excluded_pool_performance.csv"
-    exc = pd.read_csv(exc_path).set_index("model").loc[MODELS] if exc_path.exists() else None
-
-    metrics = [("accuracy", "Accuracy"), ("sensitivity", "Sensitivity"), ("specificity", "Specificity"), ("f1", "F1-score")]
-    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(10.5, 4.0), gridspec_kw={"width_ratios": [2.3, 1], "wspace": 0.45})
-    w = 0.26; x = np.arange(len(metrics)); rows = []
-    for i, m in enumerate(MODELS):
-        vals = [perf.loc[m, k] for k, _ in metrics]
-        lo = [perf.loc[m, f"{k}_ci_lo"] for k, _ in metrics]; hi = [perf.loc[m, f"{k}_ci_hi"] for k, _ in metrics]
-        pos = x + (i - 1) * w
-        ax.bar(pos, vals, w - 0.02, color=C[m], hatch=HATCH[m], edgecolor="white", linewidth=0.6, label=m)
-        ax.errorbar(pos, vals, yerr=[np.array(vals) - lo, np.array(hi) - vals], fmt="none", ecolor=INK, elinewidth=0.9, capsize=2.5)
-        for p_, v in zip(pos, vals):
-            ax.text(p_, 0.45, f"{v:.3f}", rotation=90, ha="center", va="center", color=INK, fontsize=7.5,
-                    bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="none"))
-        for (k, lab), v, l_, h_ in zip(metrics, vals, lo, hi):
-            rows.append({"panel": "a", "model": m, "metric": k, "value": v, "ci_lo": l_, "ci_hi": h_})
-    ax.set_xticks(x, [lab for _, lab in metrics]); ax.set_ylim(0, 1.05); ax.set_ylabel("Value (threshold 0.5)")
-    ax.set_title("a  Threshold-dependent metrics, official test set", loc="left")
-    ax.legend(ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.1), fontsize=8)
-
-    # panel b: AUROC
-    y = np.arange(len(MODELS))[::-1]
-    for yi, m in zip(y, MODELS):
-        a = perf.loc[m, "auroc"]
-        ax2.plot([a], [yi + (0.15 if exc is not None else 0)], marker="o", ms=7, color=C[m], mec="white", mew=1.2, ls="none")
-        ax2.text(0.52, yi + (0.15 if exc is not None else 0), f"test {a:.3f}", va="center", fontsize=7.5, color=INK)
-        rows.append({"panel": "b", "model": m, "metric": "auroc_test", "value": a, "ci_lo": perf.loc[m, "auroc_ci_lo"], "ci_hi": perf.loc[m, "auroc_ci_hi"]})
-        if exc is not None:
-            ea, elo, ehi = exc.loc[m, "auroc"], exc.loc[m, "auroc_cluster_bootstrap_ci_lo"], exc.loc[m, "auroc_cluster_bootstrap_ci_hi"]
-            ax2.errorbar([ea], [yi - 0.15], xerr=[[ea - elo], [ehi - ea]], fmt="D", ms=6, color=C[m], mfc="white", mec=C[m], mew=1.5, ecolor=INK, elinewidth=0.9, capsize=2.5)
-            ax2.text(0.52, yi - 0.15, f"pool {ea:.3f} ({elo:.3f}–{ehi:.3f})", va="center", fontsize=7.5, color=INK)
-            rows.append({"panel": "b", "model": m, "metric": "auroc_excluded_pool", "value": ea, "ci_lo": elo, "ci_hi": ehi})
-    ax2.set_yticks(y, MODELS); ax2.set_xlim(0.5, 1.02); ax2.set_xlabel("AUROC (0.5 = chance)")
-    ax2.set_title("b  Discrimination (AUROC)", loc="left")
+    pp = per_paper()
+    metrics = [("accuracy", "Accuracy"), ("sensitivity", "Sensitivity"), ("specificity", "Specificity"), ("f1", "F1-score"), ("auroc", "AUROC")]
+    series = MODELS + PAPERS
+    fig, ax = plt.subplots(figsize=(14, 5.6))
+    w = 0.86 / len(series); x = np.arange(len(metrics)); rows = []
+    rng = np.random.default_rng(0)  # horizontal jitter of the all-rows dots only
+    for i, s in enumerate(series):
+        pos = x - 0.43 + w * (i + 0.5)
+        if s in MODELS:
+            vals = np.array([perf.loc[s, k] for k, _ in metrics])
+            lo = np.array([perf.loc[s, f"{k}_ci_lo"] for k, _ in metrics]); hi = np.array([perf.loc[s, f"{k}_ci_hi"] for k, _ in metrics])
+            ax.bar(pos, vals, w * 0.92, color=C[s], hatch=HATCH[s], edgecolor="white", linewidth=0.5, label=f"This project · {s} (official test, n=484)")
+            ok = ~np.isnan(lo)
+            ax.errorbar(pos[ok], vals[ok], yerr=[vals[ok] - lo[ok], hi[ok] - vals[ok]], fmt="none", ecolor=INK, elinewidth=0.8, capsize=2)
+            for (k, _), v, l_, h_ in zip(metrics, vals, lo, hi):
+                rows.append({"panel": "a", "source": "This project", "model": s, "metric": k, "value": v, "ci_lo": l_, "ci_hi": h_, "headline": True})
+            others = pp[(pp.paper == "This project") & (pp.model == s) & ~pp.headline]
+        else:
+            d = pp[pp.paper == s]; h = d[d.headline].iloc[0]
+            vals = np.array([h[k] for k, _ in metrics])
+            ax.bar(pos, np.nan_to_num(vals), w * 0.92, color=PC[s], edgecolor="white", linewidth=0.5, alpha=0.95, label=paper_label(s))
+            for (k, _), p_, v in zip(metrics, pos, vals):
+                rows.append({"panel": "a", "source": s, "model": h.model, "metric": k, "value": v, "ci_lo": h.auroc_ci_lo if k == "auroc" else np.nan,
+                             "ci_hi": h.auroc_ci_hi if k == "auroc" else np.nan, "headline": True})
+                if np.isnan(v):
+                    ax.text(p_, 0.42, "NR", rotation=90, ha="center", va="bottom", fontsize=6.5, color=INK2)
+                allv = d[k].dropna()
+                if len(allv) > 1:  # min-max bracket over all rows of this paper
+                    ax.plot([p_, p_], [allv.min(), allv.max()], color=INK, lw=0.9, alpha=0.8)
+                    ax.plot([p_ - w * 0.25, p_ + w * 0.25], [allv.min()] * 2, color=INK, lw=0.9); ax.plot([p_ - w * 0.25, p_ + w * 0.25], [allv.max()] * 2, color=INK, lw=0.9)
+            others = d[~d.headline]
+        for (k, _), p_ in zip(metrics, pos):
+            v = others[k].dropna()
+            ax.plot(p_ + rng.uniform(-w * 0.2, w * 0.2, len(v)), v, "o", ms=2.6, color="white", mec=INK, mew=0.6, ls="none", zorder=4)
+            rows += [{"panel": "a_other_rows", "source": "This project" if s in MODELS else s, "model": s, "metric": k, "value": z, "headline": False} for z in v]
+    for xi in x[:-1]:
+        ax.axvline(xi + 0.5, color=GRID, lw=1)
+    ax.set_xticks(x, [lab for _, lab in metrics]); ax.set_ylim(0.4, 1.04); ax.set_ylabel("Reported value"); ax.grid(axis="x", visible=False)
     from matplotlib.lines import Line2D
-    h = [Line2D([], [], marker="o", color=INK2, ls="none", ms=6, label="Official test set, n=484\n(DeLong CI degenerate at AUROC=1)")]
-    if exc is not None:
-        h.append(Line2D([], [], marker="D", color=INK2, mfc="white", ls="none", ms=6, label=f"Supplementary unseen pool, n={int(exc.n.iloc[0]):,}\n(patient-cluster bootstrap 95% CI)"))
-    ax2.legend(handles=h, loc="upper center", bbox_to_anchor=(0.45, -0.17), fontsize=7.5)
-    fig.suptitle("Performance of Deep Learning Models for Binary DME Classification on the Held-Out Test Set", fontsize=11, y=1.02)
-    fig.text(0.01, -0.3, "Official Kermany OCT2017 test split: 242 DME (positive class) / 242 Normal B-scans, identical for all models. "
-             "Error bars in (a): Wilson 95% CI (F1: class-stratified bootstrap, B=2000).", fontsize=7.5, color=INK2)
+    hl, lb = ax.get_legend_handles_labels()
+    hl += [Line2D([], [], marker="o", color="white", mec=INK, mew=0.6, ls="none", ms=4), Line2D([], [], color=INK, lw=0.9)]
+    lb += ["Other rows of the same source (other cohorts, devices, units, models)", "Min–max over all rows of the paper"]
+    ax.legend(hl, lb, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.07), fontsize=7.6)
+    fig.suptitle("Performance of This Project's Models and the Five Published DME Classifiers, Metric by Metric", fontsize=11, y=0.98)
+    fig.text(0.01, -0.2, "Bars: this project = official Kermany test split (242 DME / 242 Normal, threshold 0.5; Wilson 95% CI, F1 class-stratified bootstrap); each paper = its headline row "
+             "(rule in 14_per_paper_comparison.py: internal B-scan/image-level result if reported, otherwise the main-text primary result).\n"
+             "Project dots = the same model on the unseen pool, OCTDL and Duke 2014 (volume). Not a head-to-head comparison: datasets, populations, devices, label definitions and evaluation units "
+             "differ for every source; no cross-study statistical test.\nZhu and Rodríguez-Miguel headlines are volume-level; Singh & Gorantla use fundus photographs. NR = not reported. "
+             "The project's official-test values have no meaningful CI (perfect separation). Y-axis starts at 0.40.", fontsize=7.3, color=INK2)
     save(fig, "figure1_within_project_performance", pd.DataFrame(rows))
 
 
 # --------------------------------------------------------------------------- Figure 2
 def figure2():
+    """One ROC graph: project curves (official test and unseen pool) plus each paper's published operating points;
+    panel b is the same graph zoomed. The papers publish operating points, not ROC coordinates."""
     roc = pd.read_csv(DATA / "roc_coordinates_test.csv")
     perf = pd.read_csv(DATA / "table2_within_project_performance.csv")
-    exc_roc = DATA / "roc_coordinates_excluded_pool.csv"
-    has_exc = exc_roc.exists()
-    fig, axes = plt.subplots(1, 2 if has_exc else 1, figsize=(10, 4.6) if has_exc else (5, 4.6), squeeze=False)
-    rows = []
-    ax = axes[0, 0]
-    for m in MODELS:
-        r = roc[roc.model == m]; a = perf[(perf.model == m) & (perf.threshold == 0.5)].auroc.iloc[0]
-        ax.plot(r.fpr, r.tpr, LS[m], color=C[m], lw=2, label=f"{m}  AUROC = {a:.3f}")
-        rows += [{"panel": "a", "model": m, "fpr": f, "tpr": t} for f, t in zip(r.fpr, r.tpr)]
-    ax.plot([0, 1], [0, 1], color=INK2, lw=1, ls=(0, (2, 2)), label="Random classifier")
-    ax.set(xlim=(-0.01, 1.01), ylim=(-0.01, 1.01), xlabel="False positive rate (1 − specificity)", ylabel="True positive rate (sensitivity)")
-    ax.set_aspect("equal"); ax.legend(loc="lower right", fontsize=7.5)
-    ax.set_title("a  Official test set (n = 484; 242 DME / 242 Normal)", loc="left")
-    ax.text(0.02, 0.62, "All three curves coincide on the\nleft and top axes: every DME image\nscores above every Normal image.\nDeLong CI degenerate (variance 0).", fontsize=7.5, color=INK2)
-    if has_exc:
-        e = pd.read_csv(exc_roc); ep = pd.read_csv(DATA / "supplementary_excluded_pool_performance.csv").set_index("model")
-        ax = axes[0, 1]
+    e = pd.read_csv(DATA / "roc_coordinates_excluded_pool.csv"); ep = pd.read_csv(DATA / "supplementary_excluded_pool_performance.csv").set_index("model")
+    pp = per_paper()
+    fig, axes = plt.subplots(1, 2, figsize=(13, 6.0), gridspec_kw={"wspace": 0.18}); rows = []
+    SET_MK = {"official_test": "o", "unseen_pool": "D", "octdl": "^", "duke2014": "s"}
+    SET_LAB = {"official_test": "official test", "unseen_pool": "unseen pool", "octdl": "OCTDL, external", "duke2014": "Duke 2014 volume, external"}
+    for k, ax in enumerate(axes):
+        lab = k == 0
         for m in MODELS:
-            r = e[e.model == m]
-            ax.plot(r.fpr, r.tpr, LS[m], color=C[m], lw=2,
-                    label=f"{m}  AUROC = {ep.loc[m, 'auroc']:.3f} ({ep.loc[m, 'auroc_cluster_bootstrap_ci_lo']:.3f}–{ep.loc[m, 'auroc_cluster_bootstrap_ci_hi']:.3f})")
-            rows += [{"panel": "b", "model": m, "fpr": f, "tpr": t} for f, t in zip(r.fpr, r.tpr)]
-        ax.plot([0, 1], [0, 1], color=INK2, lw=1, ls=(0, (2, 2)), label="Random classifier")
-        ax.set(xlim=(-0.01, 1.01), ylim=(-0.01, 1.01), xlabel="False positive rate (1 − specificity)", ylabel="True positive rate (sensitivity)")
-        ax.set_aspect("equal"); ax.legend(loc="lower right", fontsize=7)
-        n = int(ep.n.iloc[0]); nd = int(ep.n_dme.iloc[0])
-        ax.set_title(f"b  Supplementary unseen pool (n = {n:,}; {nd:,} DME / {n - nd:,} Normal)", loc="left")
-        ins = ax.inset_axes([0.42, 0.38, 0.45, 0.32]); ins.set_facecolor("white"); ins.set_zorder(5)
-        for m in MODELS:
-            r = e[e.model == m]; ins.plot(r.fpr, r.tpr, LS[m], color=C[m], lw=1.5)
-        ins.set(xlim=(0, 0.1), ylim=(0.85, 1.0)); ins.tick_params(labelsize=6.5); ins.set_title("detail: FPR 0–0.10, TPR 0.85–1.00", fontsize=6.5)
-    fig.suptitle("Receiver Operating Characteristic Curve for DME Classification", fontsize=11, y=1.0)
-    fig.text(0.01, -0.03, "Curves from continuous raw (uncalibrated) softmax P(DME); temperature scaling is monotonic and leaves ROC/AUROC unchanged. "
-             "Positive class: DME. Panel b CIs: patient-cluster bootstrap, B=2000.", fontsize=7.5, color=INK2)
+            r = roc[roc.model == m]; a = perf[(perf.model == m) & (perf.threshold == 0.5)].auroc.iloc[0]
+            ax.plot(r.fpr, r.tpr, LS[m], color=C[m], lw=1.2, alpha=0.55, label=f"This project · {m} · official test ROC, AUROC {a:.3f}" if lab else None)
+            r2 = e[e.model == m]
+            ax.plot(r2.fpr, r2.tpr, LS[m], color=C[m], lw=2,
+                    label=f"This project · {m} · unseen pool ROC, AUROC {ep.loc[m, 'auroc']:.3f}" if lab else None)
+            if k == 0:
+                rows += [{"panel": "a", "model": m, "fpr": f, "tpr": t_} for f, t_ in zip(r.fpr, r.tpr)]
+                rows += [{"panel": "a_pool", "model": m, "fpr": f, "tpr": t_} for f, t_ in zip(r2.fpr, r2.tpr)]
+        b3 = pp[(pp.paper == "This project") & (pp.model == "EfficientNet-B3")]
+        for _, q in b3.iterrows():
+            ax.plot([1 - q.specificity], [q.sensitivity], SET_MK[q.setting_key], ms=8, color=C["EfficientNet-B3"] if q.unit == "image" else "white",
+                    mec=C["EfficientNet-B3"], mew=1.8, ls="none", zorder=6, label=f"This project · EfficientNet-B3 at 0.5 · {SET_LAB[q.setting_key]}" if lab else None)
+            if k == 0:
+                rows.append({"panel": "a_points", "model": "This project EfficientNet-B3", "setting": q.setting_key, "fpr": 1 - q.specificity, "tpr": q.sensitivity})
+        pub = pp[(pp.paper != "This project") & pp.sensitivity.notna() & pp.specificity.notna()]
+        for paper in PAPERS:
+            d = pub[pub.paper == paper]
+            for j, (_, q) in enumerate(d.iterrows()):
+                big = bool(q.headline)
+                ax.plot([1 - q.specificity], [q.sensitivity], PMK[paper], ms=9 if big else 6, color=PC[paper] if q.unit == "image" else "white",
+                        mec=INK if big else PC[paper], mew=1.6 if big else 1.3, ls="none", zorder=5,
+                        label=None)
+                if k == 0:
+                    rows.append({"panel": "a_points", "model": paper, "setting": q.setting, "fpr": 1 - q.specificity, "tpr": q.sensitivity, "headline": big})
+        ax.set(xlabel="False positive rate (1 − specificity)", ylabel="True positive rate (sensitivity)")
+        if k == 0:
+            ax.plot([0, 1], [0, 1], color=INK2, lw=1, ls=(0, (2, 2)))
+            ax.set(xlim=(-0.01, 1.01), ylim=(-0.01, 1.01)); ax.set_aspect("equal")
+            ax.set_title("a  ROC: this project and the five papers", loc="left")
+        else:
+            ax.set(xlim=(-0.005, 0.56), ylim=(0.43, 1.005))
+            ax.set_title("b  Same graph, zoomed (1 − specificity ≤ 0.56, sensitivity ≥ 0.43)", loc="left")
+    from matplotlib.lines import Line2D
+    hl, lb = axes[0].get_legend_handles_labels()
+    for paper in PAPERS:
+        n_pts = int((pub.paper == paper).sum())
+        hl.append(Line2D([], [], marker=PMK[paper], color=PC[paper], mec=PC[paper], ls="none", ms=7)); lb.append(f"{paper_label(paper)} · {n_pts} points")
+    hl += [Line2D([], [], marker="o", color="white", mec=INK2, mew=1.3, ls="none", ms=7), Line2D([], [], marker="o", color=INK2, mec=INK, mew=1.6, ls="none", ms=9)]
+    lb += ["Hollow = volume-level result", "Large, black edge = the paper's headline row"]
+    axes[0].legend(hl, lb, loc="upper center", bbox_to_anchor=(1.05, -0.12), ncol=2, fontsize=7.2)
+    fig.suptitle("Receiver Operating Characteristic: This Project's Curves and the Five Papers' Published Operating Points", fontsize=11, y=0.98)
+    fig.text(0.01, -0.3, "Project curves from continuous raw softmax P(DME) (temperature scaling is monotonic and leaves ROC unchanged): thin = official test (n=484; all three curves lie on the left and top axes, "
+             "AUROC 1.000), thick = unseen pool (n=7,503).\nPublished markers: one per DME-presence row with both sensitivity and specificity (per_paper_comparison.csv); filled = image level, "
+             "hollow = volume level; large black-edged marker = the paper's headline row. Li 2019, Rodríguez-Miguel 2024 and\nSingh & Gorantla 2020 print ROC curves as images only; "
+             "curves were not digitised. Rodríguez-Miguel internal-test rows report no sensitivity/specificity and are not plotted. Not a head-to-head comparison; no cross-study test.", fontsize=7.3, color=INK2)
     save(fig, "figure2_roc_curves", pd.DataFrame(rows))
 
 
@@ -151,6 +198,11 @@ def figure3():
     if exc_path.exists():
         e = pd.read_csv(exc_path).set_index("model").loc["EfficientNet-B3"]
         items.append(("This project — 2D B-scan, internal held-out test (Kermany)", f"EfficientNet-B3, supplementary unseen pool (n={int(e.n):,})", e.auroc, e.auroc_cluster_bootstrap_ci_lo, e.auroc_cluster_bootstrap_ci_hi, True))
+    pp = per_paper()
+    for _, q in pp[(pp.paper == "This project") & (pp.model == "EfficientNet-B3") & (pp.role == "external")].iterrows():
+        unit = "volume, max rule" if q.unit == "volume" else "B-scan"
+        items.append(("This project — external test sets", f"EfficientNet-B3, {q.setting.split(' (')[0]} ({unit}, n={q.n})",
+                      q.auroc, q.auroc_ci_lo, q.auroc_ci_hi, q.unit == "image"))
     s1 = lit[lit.source_location.str.startswith("Supplementary Table S1")]
     for _, r in s1.iterrows():
         dev = "SPECTRALIS" if "SPECTRALIS" in r.device else "Triton"
@@ -172,8 +224,12 @@ def figure3():
     for _, r in rm.iterrows():
         items.append(("Context only (category C) — volume-level evaluation", "Rodríguez-Miguel 2024 · CNN-RNN (model 2) · screening cohort",
                       float(r.auroc), float(r.auroc_ci_lo), float(r.auroc_ci_hi), False))
+    sg = lit[lit.study.str.startswith("Singh & Gorantla 2020") & (lit.auroc != "NR")]
+    for _, r in sg.iterrows():
+        items.append(("Different modality (category D) — fundus photograph", "Singh & Gorantla 2020 · DMENet · IDRiD + MESSIDOR",
+                      float(r.auroc), np.nan, np.nan, False))
 
-    fig, ax = plt.subplots(figsize=(9.5, 7.0))
+    fig, ax = plt.subplots(figsize=(9.5, 8.3))
     yy, ylab, rows, cur, groups = [], [], [], 0, []
     for g in dict.fromkeys(i[0] for i in items):
         groups.append((g, cur)); cur += 1
@@ -192,9 +248,9 @@ def figure3():
     ax.grid(axis="y", visible=False)
     fig.suptitle("Reported Performance of Published DME Classification Systems and the Present 2D OCT Model", fontsize=11, x=0.42, y=0.995)
     fig.text(0.02, -0.02, "Not a head-to-head comparison: every row uses a different dataset, population, device, label definition and evaluation protocol. "
-             "Tang 2021 'DME' includes retinal thickening and hard exudates in diabetic eyes;\nthis project's 'DME vs Normal' uses Kermany folder labels. "
-             "Square markers = volume-level results (different evaluation unit; context only). The x-axis starts at 0.80 to resolve the published intervals; "
-             "no statistical test across studies was performed.\nVolume-level rows show primary datasets only; all external results are listed in Table 3. Li 2019 CIs are printed values, narrower than binomial for its n (Table 3 notes); fundus-based DMENet is not plotted. "
+             "\nTang 2021 'DME' includes retinal thickening and hard exudates in diabetic eyes; this project's 'DME vs Normal' uses Kermany folder labels. "
+             "Square markers = volume-level results (different evaluation unit; context only).\nThe x-axis starts at 0.80 to resolve the published intervals; "
+             "no statistical test\nacross studies was performed. Volume-level rows show primary datasets only; all external results are listed in Table 3.\nLi 2019 CIs are printed values, narrower than binomial for its n (Table 3 notes); DMENet (Singh & Gorantla 2020) uses fundus photographs and is shown as a different-modality reference only.\n"
              "This project's official-test AUROC has no meaningful CI (perfect separation).", fontsize=7, color=INK2)
     save(fig, "figure3_literature_context", pd.DataFrame(rows))
 
@@ -255,7 +311,7 @@ def figure4():
     fig.text(0.0, -0.01, "B3, B0 and label-smoothing (LS) per-epoch values were parsed from the Kaggle console logs (B3: artifacts/training_log_reconstructed.csv; B0: kaggle/20260920T095427Z/run.log; "
              "LS: kaggle/20260922T160023Z/run.log); accuracy was not logged for those runs.\nResNet-50 values from its training_log.csv. Both early-stopped runs end before 30 epochs. "
              "The LS loss includes the smoothing target, so its floor is higher and it is not on the same scale as the other losses. Training loss is computed on augmented images with class weights;\n"
-             "validation = patient-disjoint split (n=5,560 after exclusion). Test data never used.", fontsize=7, color=INK2)
+             "validation = patient-disjoint split (n=5,560 after exclusion). Test data never used.\n" + NOT_REPORTED.format(what="training or validation learning curves"), fontsize=7, color=INK2)
     for name, d in (("EfficientNet-B3", b3), ("EfficientNet-B0", b0), ("EfficientNet-B3+LS0.05", ls)):
         for _, r in d.iterrows():
             rows.append({"model": name, "epoch": r.global_epoch, "train_loss": r.train_loss, "val_loss": r.val_loss, "val_auc": r.val_auc})
@@ -285,7 +341,7 @@ def figure5():
     fig.suptitle("Calibration on the Official Test Set: Raw vs Temperature-Scaled Probabilities", fontsize=11, y=1.04)
     fig.text(0.0, -0.1, "10 equal-width bins (same as evaluate.py); empty bins omitted; numbers under each axis = images per bin (raw). Almost all predictions fall in the outermost bins, so intermediate-bin "
              "estimates rest on 0–2 images.\nTemperatures were refit with evaluate.fit_temperature on the training-time validation split (n=5,560, rebuilt with scikit-learn 1.4.2; "
-             "scripts 11–12); the test set was not used for fitting.", fontsize=7, color=INK2)
+             "scripts 11–12); the test set was not used for fitting.\n" + NOT_REPORTED.format(what="calibration analysis (reliability diagram, ECE or Brier score)"), fontsize=7, color=INK2)
     save(fig, "figure5_reliability", pd.DataFrame(rows))
 
 
@@ -325,7 +381,8 @@ def figure_a1():
     fig.suptitle("Audit Figure A1 — U-Net Fluid Segmentation Collapsed to All-Foreground (Not a Performance Figure)", fontsize=11, y=1.0)
     fig.text(0.0, -0.04, "Duke DME (Chiu et al. 2015), held-out subjects 06 and 07 (22 annotated B-scans; 8 with no fluid). Target: any manualFluid1 region; ungraded side margins (stored as 0) counted as background by segment.py; graded region = columns with manual layer annotations. "
              "Checkpoint from epoch 1 of 6.\nThe model labels 99.99% of every frame (including zero padding) as fluid; mean test Dice 0.0090 / IoU 0.0045 reflects this failure, not partial success. "
-             "Examples = first fluid-positive and first fluid-free test scan in subject/scan order.", fontsize=7, color=INK2)
+             "Examples = first fluid-positive and first fluid-free test scan in subject/scan order.\n"
+             "Comparison with the five papers: all five are classification-only (Tang 2021 explicitly segmentation-free); none reports a fluid-segmentation Dice, so no published values can be placed here.", fontsize=7, color=INK2)
     save(fig, "figureA1_segmentation_audit", pd.DataFrame(rows))
 
 

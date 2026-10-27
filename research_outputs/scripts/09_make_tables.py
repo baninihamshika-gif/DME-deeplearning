@@ -7,6 +7,7 @@ Table 2  verified within-project performance (raw @0.5 primary; tuned rows flagg
 Table 3  literature comparison (with comparability category)
 Table 4  NOT produced (segmentation evaluation invalid) -- an audit note is written instead
 Table 5  reproducibility and limitations
+Table 6  this project and each of the five papers side by side (from per_paper_comparison.csv)
 
 Usage: python research_outputs/scripts/09_make_tables.py
 """
@@ -42,8 +43,47 @@ def ci(v, lo, hi, d=3):
     return f"{v:.{d}f} ({lo:.{d}f}–{hi:.{d}f})" if not any(pd.isna([v, lo, hi])) else ("NR" if pd.isna(v) else f"{v:.{d}f}")
 
 
+def table6():
+    pp = pd.read_csv(DATA / "per_paper_comparison.csv", dtype={"n": str})
+    sources = ["This project", "Tang 2021", "Zhu 2025", "Li F 2019", "Rodríguez-Miguel 2024", "Singh & Gorantla 2020"]
+    names = {"accuracy": "Accuracy", "sensitivity": "Sensitivity", "specificity": "Specificity", "f1": "F1", "auroc": "AUROC"}
+    f = lambda v: "NR" if pd.isna(v) else f"{v:.3f}"
+    cols = {}
+    for s in sources:
+        d = pp[pp.paper == s]; h = d[d.headline].iloc[0]
+        col = {
+            "Input modality": h.modality,
+            "Evaluation unit(s)": ", ".join(sorted(set(d.unit))),
+            "Device(s)": "; ".join(dict.fromkeys(d.device)) if s != "This project" else "Spectralis (Kermany, Duke 2014); Optovue (OCTDL)",
+            "Rows (DME presence)": f"{len(d)} ({int((d.role != 'internal').sum())} external / separate cohort)",
+            "Comparability category": ", ".join(sorted(set(d.category))),
+            "Headline result": f"{h.model} · {h.setting}",
+            "Headline n": h.n,
+        }
+        for m, lab in names.items():
+            v = f(h[m])
+            if m == "auroc" and not pd.isna(h.auroc_ci_lo) and s != "This project":  # project official-test CI is degenerate
+                v += f" ({h.auroc_ci_lo:.3f}–{h.auroc_ci_hi:.3f})"
+            col[f"Headline {lab}"] = v
+        for m, lab in names.items():
+            a = d[m].dropna()
+            col[f"Range {lab} (k)"] = "NR" if a.empty else f"{a.min():.3f}–{a.max():.3f} ({len(a)})"
+        if s == "This project":
+            col["Unit-matched project value (EfficientNet-B3, 0.5)"] = "NA"
+        else:
+            key = "duke2014" if h.unit == "volume" else "official_test"
+            q = pp[(pp.paper == "This project") & (pp.model == "EfficientNet-B3") & (pp.setting_key == key)].iloc[0]
+            col["Unit-matched project value (EfficientNet-B3, 0.5)"] = (f"{q.setting}: Sens {f(q.sensitivity)}, Spec {f(q.specificity)}, AUROC {f(q.auroc)}")
+        col["Learning curves"] = "Figure 4" if s == "This project" else "NR"
+        col["Calibration (ECE / Brier)"] = "Figure 5, Table 2" if s == "This project" else "NR"
+        col["Fluid segmentation (Dice)"] = "Report §10 (retrained U-Net, pooled Dice 0.706)" if s == "This project" else "NA (classification only)"
+        cols[s] = col
+    out = pd.DataFrame(cols); out.index.name = "Item"
+    return out.reset_index()
+
+
 def main():
-    leak = json.loads((DATA / "leakage_summary.json").read_text())
+    leak =json.loads((DATA / "leakage_summary.json").read_text())
     h = pd.read_csv(DATA / "image_hashes.csv", dtype={"patient": str})
     tp = set(h[h.split == "test"].patient)
     pool = h[(h.split == "train") & ~h.patient.isin(tp)]; exc = h[(h.split == "train") & h.patient.isin(tp)]; test = h[h.split == "test"]
@@ -131,6 +171,11 @@ def main():
         f"On the same two test subjects (22 scans) it reaches pooled Dice {rt['model']['pooled_dice']:.3f} and fluid-positive mean Dice {rt['model']['mean_dice_fluid_positive']:.3f}, "
         f"against {rt['inter_grader_g2_vs_g1']['pooled_dice']:.3f} / {rt['inter_grader_g2_vs_g1']['mean_dice_fluid_positive']:.3f} between graders and "
         f"{rt['baseline_all_foreground']['pooled_dice']:.3f} for predicting fluid everywhere. Full results: research_outputs/segmentation_retrain_report.md and research_outputs/segmentation_retrain/.\n", encoding="utf8")
+
+    write(table6(), "table6_per_paper_comparison", "Table 6. This project and each of the five papers side by side (not a head-to-head comparison)",
+          "Values from research_outputs/data/per_paper_comparison.csv (script 14). Headline = internal B-scan/image-level result if the paper reports one, otherwise its main-text primary result; "
+          "range = min–max over every DME-presence row of that source (k = rows reporting the metric). Unit-matched project value: same evaluation unit as the paper's headline "
+          "(image → official test; volume → Duke 2014, max rule, n=30). Data, populations, devices and labels differ in every column; no cross-study test. NR = not reported; NA = not applicable.")
 
     import sklearn, scipy, torch, timm, matplotlib
     t5 = [

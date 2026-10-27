@@ -46,14 +46,16 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 | D | Comparability matrix before plotting | **PASS** | `research_audit/comparability_matrix.csv` (A/B/C/D) |
 | D | Paired tests, multiple-comparison handling | **PASS** | McNemar + Holm; paired DeLong undefined (both AUROC = 1), stated |
 | D | No cross-study significance tests or invented CIs | **PASS** | None performed; published CIs copied as printed |
-| E | Figure 1 (within-project) | **PASS** | 3 genuinely evaluated models, full 0–1 axis |
-| E | Figure 2 (ROC) | **PASS** | Raw probabilities stated; no literature curves overlaid |
-| E | Figure 3 (literature) | **PASS** | Grouped by category, explicit non-comparability caption, plus Table 3 |
+| E | Figure 1 (project + five papers, one graph) | **PASS** | 3 evaluated project models (official test, Wilson CIs) beside each paper's headline row, with every other row as dots and min–max brackets; y-axis from 0.40, stated; values checked against `per_paper_comparison.csv` (check 2) |
+| E | Figure 2 (ROC, project + five papers, one graph) | **PASS** | Raw probabilities stated; project curves (official test, unseen pool) plus every published sensitivity/specificity pair as points; published ROC images not digitised; points checked (check 2) |
+| E | Figure 3 (literature) | **PASS** | All five papers plus the project's internal and external sets, grouped by category (DMENet as category D), explicit non-comparability caption, plus Table 3 |
 | E | Figure 4 (learning curves) | **PASS** (all four models) | No epochs invented. B0 and A5 parsed from their console logs (`20260920T095427Z`, `20260922T160023Z`); selected epochs match `checkpoint_metadata.json` |
 | E | Figure 5 (reliability) | **PASS** | Fixed 10-bin scheme, counts shown |
 | E | Figure 6 (segmentation performance) | **NOT APPLICABLE** | Replaced by Audit Figure A1 because the evaluation is invalid |
 | E | 300-dpi PNG + vector PDF | **PASS** | Check 11 (dpi ≥ 300) |
 | E2 | Tables 1, 2, 3, 5 | **PASS** | `research_outputs/tables/` |
+| E2 | Table 6 (project vs each paper, side by side) | **PASS** | From `per_paper_comparison.csv` (script 14; headline rule fixed in advance, all rows kept as ranges); headline cells checked (check 2); report §8.1 |
+| E2 | Figures 4, 5, A1 vs the papers | **PASS** (NR stated) | None of the five papers reports learning curves, calibration or segmentation Dice (full texts searched); stated on each figure and in Table 6 |
 | E2 | Table 4 | **NOT APPLICABLE** (original checkpoint) | Original evaluation invalid; `table4_segmentation_NOT_PRODUCED.md` points to the retrained model's results (`segmentation_retrain_report.md`, report §10.2) |
 | F | Results report | **PASS** | `research_outputs/research_results_report.md` |
 | F | External validation claimed only if performed | **PASS** | External evaluation performed on OCTDL, Duke 2014 and Duke 2015 (report §7.4) and described with its limits; no clinical validation claimed |
