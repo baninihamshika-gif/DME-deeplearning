@@ -1,0 +1,48 @@
+{
+  "checkpoint": "artifacts/kaggle/20260923T181925Z/artifacts/segmentation/checkpoint_best.pt",
+  "checkpoint_epoch": 1,
+  "checkpoint_best_val_dice": null,
+  "target": "binary fluid mask = any labelled region in manualFluid1 (grader 1), Duke DME (Chiu et al. 2015)",
+  "threshold": 0.5,
+  "input": "320x320 letterbox, NLM denoise + CLAHE",
+  "val": {
+    "subjects": [
+      "01",
+      "08"
+    ],
+    "n_images": 22,
+    "n_empty_gt": 5,
+    "mean_dice_pipeline_convention": 0.013886346388811548,
+    "mean_iou_pipeline_convention": 0.007098097999410882,
+    "pooled_dice_pipeline": 0.014096240561733864,
+    "mean_dice_graded_only": 0.021216168587827124,
+    "pooled_dice_graded_only": 0.02170764057360302,
+    "mean_dice_fluid_positive_images_only": 0.017970565914645343,
+    "mean_pred_frac_of_frame": 0.9999485085227273,
+    "min_pred_frac_of_frame": 0.99986328125,
+    "mean_gt_frac_of_graded": 0.010983476064997805,
+    "mean_prob": 0.9800209105014801,
+    "inter_grader_mean_dice_graded": 0.5224959068507805,
+    "inter_grader_mean_dice_graded_fluid_positive": 0.5585241142505859
+  },
+  "test": {
+    "subjects": [
+      "06",
+      "07"
+    ],
+    "n_images": 22,
+    "n_empty_gt": 8,
+    "mean_dice_pipeline_convention": 0.008952530804772168,
+    "mean_iou_pipeline_convention": 0.0045261524698057215,
+    "pooled_dice_pipeline": 0.009011493277616921,
+    "mean_dice_graded_only": 0.013757109529825408,
+    "pooled_dice_graded_only": 0.013896574377202858,
+    "mean_dice_fluid_positive_images_only": 0.014068262692655343,
+    "mean_pred_frac_of_frame": 0.9999520596590912,
+    "min_pred_frac_of_frame": 0.999873046875,
+    "mean_gt_frac_of_graded": 0.006996596398770313,
+    "mean_prob": 0.9808385914022272,
+    "inter_grader_mean_dice_graded": 0.7581869617091802,
+    "inter_grader_mean_dice_graded_fluid_positive": 0.6200080826858547
+  }
+}

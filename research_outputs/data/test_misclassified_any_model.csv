@@ -1,0 +1,3 @@
+filename,label,p_EfficientNet-B3,p_EfficientNet-B0,p_ResNet-50,p_EfficientNet-B3 + LS 0.05 (ablation)
+DME-6151003-1.jpeg,1,0.6404196,0.07921405,0.030092558,0.277653
+DME-8366524-1.jpeg,1,0.30948904,0.56207615,0.80005777,0.67911416

@@ -1,0 +1,16 @@
+group,label,auroc,ci_lo,ci_hi
+"This project — 2D B-scan, internal held-out test (Kermany)","EfficientNet-B3, official test set (n=484)",1.0,,
+"This project — 2D B-scan, internal held-out test (Kermany)","EfficientNet-B3, supplementary unseen pool (n=7,503)",0.9964313905445256,0.9946265645363346,0.997849721931266
+"Tang et al. 2021 — 2D ResNet-18, B-scan level (category B)",SPECTRALIS · Primary · internal,0.94,0.934,0.945
+"Tang et al. 2021 — 2D ResNet-18, B-scan level (category B)","SPECTRALIS · External 4 (China, Aier) · external",0.958,0.951,0.964
+"Tang et al. 2021 — 2D ResNet-18, B-scan level (category B)","SPECTRALIS · External 5 (Australia, WIMR) · external",0.959,0.953,0.964
+"Tang et al. 2021 — 2D ResNet-18, B-scan level (category B)","SPECTRALIS · External 6 (Hong Kong, UCH) · external",0.899,0.893,0.905
+"Tang et al. 2021 — 2D ResNet-18, B-scan level (category B)",Triton · Primary · internal,0.937,0.931,0.942
+"Tang et al. 2021 — 2D ResNet-18, B-scan level (category B)","Triton · External 7 (China, JSIEC) · external",0.947,0.941,0.953
+"Li et al. 2019 — ResNet50 ensemble, B-scan level (category B)",SPECTRALIS · Shanghai · internal test · DME vs NORMAL,0.996,0.995,0.997
+Context only (category C) — volume-level evaluation,"Tang 2021 · CIRRUS HD-OCT · primary · 3D CNN, volume",0.937,0.92,0.954
+Context only (category C) — volume-level evaluation,Tang 2021 · SPECTRALIS OCT · primary · 2D CNN aggregated to volume,0.958,0.93,0.977
+Context only (category C) — volume-level evaluation,Tang 2021 · Triton OCT · primary · 2D CNN aggregated to volume,0.965,0.948,0.977
+Context only (category C) — volume-level evaluation,Zhu 2025 · 3D CNN · hold-out test,0.99,0.983,0.996
+Context only (category C) — volume-level evaluation,Zhu 2025 · 3D CNN · external validation (total),0.916,0.902,0.93
+Context only (category C) — volume-level evaluation,Rodríguez-Miguel 2024 · CNN-RNN (model 2) · screening cohort,0.94,0.91,0.97

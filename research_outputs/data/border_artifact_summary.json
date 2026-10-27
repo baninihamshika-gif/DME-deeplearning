@@ -1,0 +1,5 @@
+{
+  "rule": "any 12x12 corner patch with median >= 250",
+  "test_auroc_flag_as_DME_score": 0.37809917355371897,
+  "pool_auroc_flag_as_DME_score": 0.4943642737760385
+}

@@ -1,0 +1,3 @@
+.cache/
+# The repo-root rule "data/" targets the raw dataset; these are derived results that the tables and figures are built from.
+!data/

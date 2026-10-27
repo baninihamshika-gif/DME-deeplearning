@@ -17,7 +17,9 @@ albumentations==1.4.*
 grad-cam==1.5.*
 
 # --- Metrics and plotting ---
-scikit-learn==1.4.*
+# Exact pin: StratifiedGroupKFold's fold assignment changed after 1.4, so
+# another version silently produces a different train/val split.
+scikit-learn==1.4.2
 matplotlib==3.8.*
 seaborn==0.13.*
 

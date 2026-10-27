@@ -1,0 +1,9 @@
+{
+  "local_sklearn_version": "1.9.0",
+  "local_val_n": 6047,
+  "local_val_images_in_true_TRAIN": 5096,
+  "local_val_images_in_true_val": 951,
+  "local_val_fraction_in_true_train": 0.8427319331900116,
+  "local_val_patients_in_true_train": 553,
+  "local_val_patients": 676
+}
