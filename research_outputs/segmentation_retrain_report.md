@@ -57,7 +57,7 @@ more informative per-image number. Pooled = pixel counts summed over all scans o
 
 ## Interpretation (cautious)
 
-- **Clear improvement over the trivial baselines.** On both splits the model beats predicting fluid everywhere (pooled Dice 0.71 vs 0.02 on test) and predicting nothing (0.71 vs 0). It predicts fluid on about 1.2-1.7% of graded pixels, close to the 1.0-1.6% marked by grader 1. The earlier collapse to near-all-foreground is gone.
+- **Clear improvement over the trivial baselines.** On both splits the model scores well above predicting fluid everywhere (pooled Dice 0.71 vs 0.02 on test) and predicting nothing (0.71 vs 0). It predicts fluid on about 1.2-1.7% of graded pixels, close to the 1.0-1.6% marked by grader 1. The earlier collapse to near-all-foreground is gone.
 - **Roughly in the same range as human inter-grader agreement on these 4 held-out subjects.** On test, pooled Dice was 0.71 vs 0.69 and fluid-positive mean Dice 0.63 vs 0.61. This should *not* be read as "human-level":
   - The model was trained on grader 1's style and scored against grader 1, while grader 2 is an independent human. Against grader 2 the model's fluid-positive mean Dice is 0.63 on test and 0.57 on val, about the same as the grader-vs-grader numbers.
   - With 2 test subjects and 14 fluid-positive test scans, a difference of a few Dice points is well inside the noise.
