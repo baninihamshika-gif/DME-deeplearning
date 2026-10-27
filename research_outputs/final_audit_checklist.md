@@ -40,7 +40,7 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 | B5 | Calibration audited | **PASS** | Raw vs calibrated reported separately; no material change claimed |
 | B5 | Grad-CAM audited | **PASS** (protocol reviewed) | Not regenerated; no clinical-reasoning claim made |
 | C | 2021 paper read in full incl. supplement | **PASS** | PMC HTML + figshare supplementary tables and methods |
-| C | 2025 paper read in full | **PASS** (main text) · **NOT VERIFIABLE** (online supplementary tables) | BMJ site returned HTTP 403; PMC XML has no supplementary tables |
+| C | 2025 paper read in full | **PASS** (main text and online supplement) | PMC XML and publisher PDF agree; supplement (`bmjopen-15-5-s001.docx`, supplied by the user) read in full; two printing errors flagged |
 | C | `literature_extraction.csv`, `references.bib` | **PASS** | Crossref-verified bibliographic data |
 | D | Comparability matrix before plotting | **PASS** | `research_audit/comparability_matrix.csv` (A/B/C/D) |
 | D | Paired tests, multiple-comparison handling | **PASS** | McNemar + Holm; paired DeLong undefined (both AUROC = 1), stated |
@@ -55,14 +55,14 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 | E2 | Tables 1, 2, 3, 5 | **PASS** | `research_outputs/tables/` |
 | E2 | Table 4 | **NOT APPLICABLE** | Segmentation invalid; `table4_segmentation_NOT_PRODUCED.md` |
 | F | Results report | **PASS** | `research_outputs/research_results_report.md` |
-| F | External validation claimed only if performed | **PASS** | Explicitly stated as absent |
+| F | External validation claimed only if performed | **PASS** | External evaluation performed on OCTDL, Duke 2014 and Duke 2015 (report §7.4) and described with its limits; no clinical validation claimed |
 
 ## Files created (no existing files modified)
 
 - `research_audit/`: `repository_inventory.md`, `metric_verification.md`, `leakage_audit.md`, `literature_extraction.csv`, `comparability_matrix.csv`, `references.bib`, `checksums_before.sha256`
 - `research_outputs/research_results_report.md`, `research_outputs/final_audit_checklist.md`, `research_outputs/.gitignore` (ignores `.cache/`)
-- `research_outputs/scripts/01_…12_*.py` (12 scripts; 11 runs in an isolated Python 3.12 / scikit-learn 1.4.2 environment)
-- `research_outputs/data/`: test predictions (4 models), excluded-pool predictions, checkpoint metadata, metric/CI tables, ROC coordinates, reliability bins, calibration summary, paired comparisons, leakage/dimension/border scans, image hashes, segmentation per-image and summary, `training_split_manifest.csv`, `val_predictions_true_split.csv`, `refit_calibration_threshold.csv`, `val_split_contamination.json`, `final_checks.json`
+- `research_outputs/scripts/01_…13_*.py` (13 scripts; 11 runs in an isolated Python 3.12 / scikit-learn 1.4.2 environment; 13 needs OCTDL and Duke 2014 in git-ignored `data/external/`)
+- `research_outputs/data/`: test predictions (4 models), excluded-pool predictions, checkpoint metadata, metric/CI tables, ROC coordinates, reliability bins, calibration summary, paired comparisons, leakage/dimension/border scans, image hashes, segmentation per-image and summary, `training_split_manifest.csv`, `val_predictions_true_split.csv`, `refit_calibration_threshold.csv`, `val_split_contamination.json`, `external_predictions_{octdl,duke2014,duke2015}.csv`, `external_validation_{performance,patient_level,duke2015,duke2014_posthoc}.csv`, `final_checks.json`
 - `research_outputs/figures/`: figures 1–5 and A1 (PNG + PDF + `_plotted_values.csv`)
 - `research_outputs/tables/`: Tables 1, 2, 3, 5 (CSV + MD), Table 4 note
 - Local cache only (git-ignored): `research_outputs/.cache/` (preprocessing cache, logs, segmentation example arrays)
@@ -70,8 +70,8 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 ## Unresolved issues
 
 1. ~~Tuned thresholds and temperatures are invalid~~ **Resolved:** refit on the rebuilt training-time validation split (scripts 11–12). Residual caveat: on the easier test set the refit operating points give perfect or near-perfect counts, and refit scaling worsens test ECE for B3 and B0; validation specificity at 97% sensitivity (0.956–0.982) is the more realistic figure.
-2. **No external validation**, and the official test set appears unrepresentative (easier). The unseen-pool estimate (AUROC 0.996–0.997, accuracy 97.1–97.5%) is the more conservative internal figure.
+2. **External evidence is limited.** OCTDL (Optovue; AUROC 0.993–0.999, sensitivity at 0.5 0.93–0.96), Duke 2014 (volume AUROC 1.000, but the pre-specified max rule flags 4–9 of 15 normal volumes from off-centre slices) and Duke 2015 (DME only; sensitivity 0.95–0.96) are small public sets, not a clinical cohort. The official test set also appears unrepresentative (easier). The unseen-pool estimate (AUROC 0.996–0.997, accuracy 97.1–97.5%) is the more conservative internal figure.
 3. ~~B0 test-patient exclusion cannot be confirmed from a log~~ **Resolved:** verified via run `20260920T095427Z` (bitwise-identical weights; exclusion logged).
 4. **The segmentation model is non-functional**, and its ground-truth handling of ungraded pixels is flawed.
-5. **Zhu 2025 online supplementary tables** were not retrieved (HTTP 403).
+5. ~~Zhu 2025 online supplementary tables not retrieved~~ **Resolved:** supplement read in full. Confusion matrices recompute every metric; per-device and reader-comparison rows were added to `literature_extraction.csv`.
 6. ~~Kermany device and grading details from prior knowledge~~ **Resolved:** verified against the published STAR Methods (archived Cell full text): Spectralis OCT; five centres; July 2013 – March 2017; three-tier grading (students → four ophthalmologists → two senior retinal specialists).

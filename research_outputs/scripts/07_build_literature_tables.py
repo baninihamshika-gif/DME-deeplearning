@@ -7,9 +7,12 @@ on 2026-10-27 and carries its exact table location. Sources read:
   Tang et al. 2021 (Diabetes Care 44(9):2078-2088): PMC8740924 full-text HTML,
     and figshare 10.2337/figshare.14710284 (Supplementary_Tables_Clean_14April2021.pdf,
     Supplementary_1_Clean_13April2021.pdf).
-  Zhu et al. 2025 (BMJ Open 15(5):e099167): PMC12128415 full-text XML. Its
-    online supplementary tables (per-device results, human comparison) were
-    NOT retrievable (publisher site returned HTTP 403) -- marked pending.
+  Zhu et al. 2025 (BMJ Open 15(5):e099167): PMC12128415 full-text XML, checked
+    against the publisher's 8-page article PDF (supplied by the user; Table 3
+    values identical; Table 2 column layout read from the PDF), and the online
+    supplement bmjopen-15-5-s001.docx (supplied by the user): Supplementary
+    Table 1 confusion matrices (every published metric recomputes from them),
+    Table 2 per-device results, Table 3 human-system comparison.
 Published values are copied as printed, including two internally inconsistent
 CIs in Tang 2021 (flagged in the notes column, not corrected).
 "NR" = not reported; "NA" = not applicable.
@@ -86,15 +89,36 @@ z = [
     ("non-CI-DME vs CI-DME", "Testing", "hold-out test (internal, JSIEC, patient-level random 15%)", 0.770, 0.795, 0.795, 0.737, 0.859, 0.812, 0.906),
     ("non-CI-DME vs CI-DME", "External validation Total", "external validation", 0.799, 0.833, 0.786, 0.821, 0.881, 0.859, 0.902),
 ]
-nmap = {"External validation Chaozhou": "1269 volumes (column mapping inferred, see notes)", "External validation STU-2nd": "240 volumes (column mapping inferred, see notes)",
-        "External validation Total": "1509 volumes", "Testing": "NR (15% of 6281 development volumes; exact count not reported)"}
+# Supplementary Table 1 confusion matrices (TN, FP, FN, TP), keyed by (task, dataset)
+zcm = {("non-DME vs DME", "Testing"): (700, 22, 15, 219), ("non-DME vs DME", "External validation Chaozhou"): (398, 71, 102, 698),
+       ("non-DME vs DME", "External validation STU-2nd"): (120, 0, 65, 55), ("non-DME vs DME", "External validation Total"): (518, 71, 167, 753),
+       ("non-CI-DME vs CI-DME", "Testing"): (73, 26, 26, 101), ("non-CI-DME vs CI-DME", "External validation Total"): (275, 60, 125, 460)}
+ZNOTE = ("AUROC CI by DeLong (pROC 1.14.0). Table 2 (article PDF layout): JSIEC spans Zeiss 1374 + Topcon 4907 (= 6281 development); "
+         "Chaozhou = Zeiss 1269; STU-2nd = Topcon 240. TN/FP/FN/TP from Supplementary Table 1; published accuracy, F1, sensitivity and "
+         "specificity all recompute from them.")
+dmap = {"External validation Chaozhou": "Cirrus HD-OCT 4000 (Zeiss) only", "External validation STU-2nd": "Topcon 3D-OCT 2000 only"}
 for task, ds, role, ac, f1, se, sp, a, lo, hi in z:
     L.append(row(study=Z25, source_location="Table 3", model="Custom 3D CNN initialised from Models Genesis, two FC layers", input_representation="3D OCT volume (resampled to 128x128x128; split into two 64-slice cubes)",
                  task=task + " (ICO guideline definitions; hard exudates NOT counted as DME)", positive_class="DME" if task.startswith("non-DME") else "CI-DME (among DME eyes)",
-                 device="Cirrus HD-OCT 4000 and Topcon 3D-OCT 2000 (pooled)", dataset=ds, cohort_role=role, evaluation_unit="OCT volume",
-                 n_evaluated=nmap.get(ds, "NR"), accuracy=ac, sensitivity=se, specificity=sp, f1=f1, auroc=a, auroc_ci_lo=lo, auroc_ci_hi=hi,
+                 device=dmap.get(ds, "Cirrus HD-OCT 4000 and Topcon 3D-OCT 2000 (pooled)"), dataset=ds, cohort_role=role, evaluation_unit="OCT volume",
+                 n_evaluated="{} volumes (TN {}, FP {}, FN {}, TP {})".format(sum(zcm[(task, ds)]), *zcm[(task, ds)]), accuracy=ac, sensitivity=se, specificity=sp, f1=f1, auroc=a, auroc_ci_lo=lo, auroc_ci_hi=hi,
                  sensitivity_ci="NR", specificity_ci="NR", accuracy_ci="NR",
-                 notes="AUROC CI by DeLong (pROC 1.14.0). Table 2 lists 3 dataset labels over 4 device columns (Zeiss 1374 | Topcon 4907 | Zeiss 1269 | Topcon 240); JSIEC = 1374+4907 = 6281 matches the stated development total, so Chaozhou = 1269 (Zeiss) and STU-2nd = 240 (Topcon) is inferred. Per-device results are in online supplementary table 2, not retrieved (HTTP 403)."))
+                 notes=ZNOTE))
+
+# ---------------- Zhu 2025, Supplementary Tables 2 and 3 (online supplement, bmjopen-15-5-s001.docx)
+zs = [  # source, task, dataset, device, role, (TN, FP, FN, TP), acc, f1, sens, spec, auroc, lo, hi, note
+    ("Supplementary Table 2", "non-DME vs DME", "Testing, Topcon only", "Topcon 3D-OCT 2000", "hold-out test (internal, JSIEC, patient-level random 15%)", (650, 13, 7, 90), 0.974, 0.900, 0.928, 0.980, 0.989, 0.977, 1.000, ""),
+    ("Supplementary Table 2", "non-DME vs DME", "Testing, Zeiss only", "Cirrus HD-OCT 4000 (Zeiss)", "hold-out test (internal, JSIEC, patient-level random 15%)", (129, 9, 8, 50), 0.913, 0.855, 0.862, 0.935, 0.967, 0.944, 0.990, ""),
+    ("Supplementary Table 3", "non-DME vs DME", "Human-system comparison set", "NR", "reader comparison set (source and sampling not stated in the supplement)", (104, 7, 8, 81), 0.925, 0.915, 0.910, 0.937, 0.971, 0.948, 0.993,
+     "Three retina experts on the same 200 volumes: sensitivity 0.944 / 1.000 / 1.000, specificity 0.658 / 0.856 / 0.928 (AUROC NA). The printed 'experts' average' F1 (1.957; 1.871 for CI-DME) cannot exceed 1 and does not match its counts (0.887); copied in this note only."),
+]
+for src, task, ds, dev, role, cmx, ac, f1, se, sp, a, lo, hi, note in zs:
+    L.append(row(study=Z25, source_location=f"{src} (online supplement bmjopen-15-5-s001.docx)", model="Custom 3D CNN initialised from Models Genesis, two FC layers", input_representation="3D OCT volume (resampled to 128x128x128; split into two 64-slice cubes)",
+                 task=task + " (ICO guideline definitions; hard exudates NOT counted as DME)", positive_class="DME",
+                 device=dev, dataset=ds, cohort_role=role, evaluation_unit="OCT volume",
+                 n_evaluated="{} volumes (TN {}, FP {}, FN {}, TP {})".format(sum(cmx), *cmx), accuracy=ac, sensitivity=se, specificity=sp, f1=f1, auroc=a, auroc_ci_lo=lo, auroc_ci_hi=hi,
+                 sensitivity_ci="NR", specificity_ci="NR", accuracy_ci="NR",
+                 notes=("Metrics recompute from the printed counts. " + note).strip()))
 
 lit = pd.DataFrame(L)
 

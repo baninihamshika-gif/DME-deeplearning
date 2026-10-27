@@ -22,7 +22,7 @@ To detect diabetic macular edema (DME) versus normal retina from single 2D OCT B
 - **Explainability [E]:** Grad-CAM on `conv_head`, with a classifier-weight randomisation sanity check (mean correlation −0.117). Not regenerated here.
 - **Calibration [E/R]:** single-temperature scaling (§11).
 - **Segmentation [R]:** a U-Net (`smp`, EfficientNet-B3 encoder initialised from the classifier) trained on Duke DME fluid masks (§10).
-- **Not implemented:** 3D/volumetric models, external-validation data, ensembles.
+- **Not implemented:** 3D/volumetric models, ensembles. External data were not part of the original project; this audit added an external evaluation (§7.4).
 
 ## 3. Dataset and split
 
@@ -120,6 +120,47 @@ The refit operating points are valid, but the perfect test counts mostly reflect
 
 Together these suggest the 484 test images are a separately selected, comparatively easy subset (see also §5 supplementary results).
 
+### 7.4 External evaluation on public non-Kermany data [N]
+
+Frozen checkpoints, unchanged preprocessing, and thresholds fixed in advance: raw 0.5, and the refit temperature/threshold from §7.2, which were fitted on Kermany data only. Nothing was tuned on external data (`scripts/13_external_validation.py`).
+
+**OCTDL** (Kulyabin et al., *Sci Data* 2024; CC BY 4.0). Optovue Avanti RTVue XR, a different manufacturer from Kermany's Spectralis; Russian clinical data. DME 147 B-scans (107 patients) vs normal 332 B-scans (110 patients); OCTDL's other classes were excluded. No exact copies of Kermany images were found, and the six nearest dHash matches (distance ≤ 4) were inspected visually and are different scans. CIs are patient-cluster bootstrap (B = 2,000).
+
+| Model | Threshold | TP / FP / TN / FN | Sensitivity (95% CI) | Specificity (95% CI) | AUROC (cluster-bootstrap 95% CI) |
+|---|---|---|---|---|---|
+| EfficientNet-B3 | 0.5 raw | 141 / 1 / 331 / 6 | 0.959 (0.916–0.992) | 0.997 (0.990–1.000) | 0.9993 (0.9982–0.9999) |
+| EfficientNet-B3 | 0.181 refit | 147 / 16 / 316 / 0 | 1.000 (degenerate) | 0.952 (0.928–0.972) | same |
+| EfficientNet-B0 | 0.5 raw | 137 / 1 / 331 / 10 | 0.932 (0.882–0.972) | 0.997 (0.990–1.000) | 0.9934 (0.9793–1.0000) |
+| EfficientNet-B0 | 0.121 refit | 142 / 2 / 330 / 5 | 0.966 (0.927–0.994) | 0.994 (0.984–1.000) | same |
+| ResNet-50 | 0.5 raw | 137 / 0 / 332 / 10 | 0.932 (0.887–0.969) | 1.000 (degenerate) | 0.9981 (0.9961–0.9994) |
+| ResNet-50 | 0.219 refit | 140 / 2 / 330 / 7 | 0.952 (0.915–0.981) | 0.994 (0.984–1.000) | same |
+| B3 + LS 0.05 | 0.5 raw | 140 / 1 / 331 / 7 | 0.952 (0.909–0.987) | 0.997 (0.990–1.000) | 0.9986 (0.9964–0.9999) |
+| B3 + LS 0.05 | 0.096 refit | 146 / 16 / 316 / 1 | 0.993 (0.978–1.000) | 0.952 (0.929–0.972) | same |
+
+- Ranking is not stable enough to separate the architectures; their intervals overlap.
+- At 0.5, sensitivity drops from 0.996 (Kermany test) to 0.93–0.96, with almost no false positives. The refit thresholds recover sensitivity at the cost of specificity, most clearly for B3 and B3+LS (16 false positives each).
+- B3's six misses at 0.5 show hyperreflective foci, hard exudates or mild thickening without obvious cysts (visual inspection, not graded). This is plausibly a label-definition gap with Kermany's DME class rather than a device effect, but it was not tested. Its one false positive is a myopic normal image that carries an on-screen arrow overlay.
+- Patient level (patient score = max P over that patient's images, 0.5): sensitivity 0.94–0.97, specificity 0.99–1.00, AUROC 0.996–0.999 (`external_validation_patient_level.csv`).
+
+**Duke Srinivasan 2014** (Srinivasan et al., *BOE* 2014; research/education use, not redistributed). Spectralis, the same device family as Kermany but different centres (Duke, Harvard, Michigan). 15 DME and 15 normal volumes, one per subject, 2,508 B-scans; the AMD volumes were excluded. No exact copies of Kermany images; the two nearest dHash matches (distance 4) are different scans. Labels are per volume, so the pre-specified primary analysis is volume level, with volume score = max P(DME) over its B-scans (the presence rule used by Tang 2021). Mean P(DME) was the pre-specified secondary rule. CIs are Wilson (n = 15 per class) and DeLong.
+
+| Model | AUROC, max rule (and mean rule) | Max rule @0.5: sens / spec | Max rule @refit: spec | Mean rule @0.5: sens / spec | Mean rule @refit: sens / spec |
+|---|---|---|---|---|---|
+| EfficientNet-B3 | 1.000 (1.000) | 15/15 / 7/15 (0.47; 0.25–0.70) | 0/15 | 12/15 / 15/15 | 15/15 / 15/15 |
+| EfficientNet-B0 | 1.000 (1.000) | 15/15 / 11/15 (0.73; 0.48–0.89) | 0/15 | 11/15 / 15/15 | 15/15 / 15/15 |
+| ResNet-50 | 1.000 (1.000) | 15/15 / 6/15 (0.40; 0.20–0.64) | 1/15 | 13/15 / 15/15 | 15/15 / 15/15 |
+| B3 + LS 0.05 | 1.000 (1.000) | 15/15 / 7/15 (0.47; 0.25–0.70) | 0/15 | 13/15 / 15/15 | 15/15 / 13/15 |
+
+- **Ranking is perfect, but the pre-specified operating point fails on normal eyes.** Every model ranks all 15 DME volumes above all 15 normal volumes (AUROC 1.000; n = 30, so the interval is wide in reality and DeLong is degenerate). With the max rule, B-scan thresholds tuned for single images flag 4–9 of 15 normal volumes at 0.5 and nearly all of them at the lower refit thresholds.
+- **Why.** At B-scan level only 0.7–1.4% of normal B-scans score ≥ 0.5, compared with 70–78% of B-scans in DME volumes. Taking the maximum over ~97 slices still catches those few. The highest-scoring normal B-scans are all off-centre slices without a foveal pit (visual inspection). Kermany's training images are single foveal B-scans (STAR Methods), so off-centre slices are out of distribution for these models.
+- **Mean rule.** It separates the two classes at the refit thresholds for three models (15/15 and 15/15), but this was a secondary rule, and its good result should not be promoted after the fact.
+- **POST HOC (decided after seeing the above):** scoring only each volume's central B-scan, a proxy for the fovea, gives sensitivity 12–13/15, specificity 15/15 and AUROC 0.991–1.000 at 0.5 (`external_validation_duke2014_posthoc.csv`).
+- **Implication.** These are B-scan classifiers for foveal images. Applying them to whole volumes needs a slice-selection or aggregation rule validated on separate data; none has been validated here.
+
+**Duke DME 2015** (Chiu et al., *BOE* 2015; Spectralis; 10 DME subjects, 110 grader-annotated B-scans). There are no normal eyes, so only sensitivity is estimable. On the 78 B-scans with grader-1 fluid, sensitivity at 0.5 is 0.949–0.962 (e.g. B3 75/78, Wilson 0.893–0.987; CIs ignore within-subject clustering). All 10 subjects are flagged by the max rule (Wilson 0.72–1.00). 44–69% of fluid-free B-scans from these DME eyes are also called DME; these are not negatives and only describe the score distribution.
+
+**Interpretation.** Image-level discrimination transfers to a second manufacturer and site (OCTDL AUROC ≥ 0.99) and to volume-level ranking on a second Spectralis cohort (Duke 2014 AUROC 1.000). Operating points do not transfer automatically, though: whole-volume use produces false positives from off-centre slices. All three external sets are small, curated, public B-scan collections with their own label definitions. This is evidence of transfer beyond Kermany, not a clinical or prospective validation, and it does not make the results comparable to Tang 2021 or Zhu 2025, which are volume-level studies with clinically graded diabetic cohorts.
+
 ## 8. Literature comparison
 
 Sources were read in full: Tang et al. 2021 (PMC full text plus figshare supplement) and Zhu et al. 2025 (PMC XML full text). Extraction: `research_audit/literature_extraction.csv`. Comparability: `research_audit/comparability_matrix.csv`. Table: `research_outputs/tables/table3_literature_comparison.md`.
@@ -139,7 +180,11 @@ Sources were read in full: Tang et al. 2021 (PMC full text plus figshare supplem
 
 - Design: a 3D CNN (Models Genesis initialisation) on Cirrus and Topcon volumes. Labels follow ICO definitions and exclude hard exudates.
 - DME vs non-DME, AUROC 0.990 (0.983–0.996) on the 15% JSIEC hold-out test set and 0.916 (0.902–0.930) on centre-split external validation (Table 3). CI-DME vs non-CI-DME: 0.859 and 0.881.
-- The evaluation unit (volume), input (3D) and labels differ from this project, so it supports discussion only. Its per-device supplementary table was not retrievable (publisher HTTP 403) **[U]**.
+- The evaluation unit (volume), input (3D) and labels differ from this project, so it supports discussion only. Main-text values were checked against the publisher's article PDF (identical). Each external site used one device (Chaozhou: Cirrus, 1,269 volumes; STU-2nd: Topcon, 240 volumes; Table 2), so the per-site rows are also per-device rows for external data. The online supplement (`bmjopen-15-5-s001.docx`) was also checked **[E]**:
+  - **Confusion matrices.** Supplementary Table 1 gives the confusion matrices; every published accuracy, F1, sensitivity and specificity recomputes from them. The hold-out test set is 956 volumes (234 DME).
+  - **Per device (Supplementary Table 2).** On the hold-out test set, Topcon reaches AUROC 0.989 (0.977–1.000; n = 760) and Cirrus 0.967 (0.944–0.990; n = 196). Externally, Cirrus/Chaozhou gives 0.933 and Topcon/STU-2nd gives 0.904, with sensitivity 0.458 and 65 of 120 DME volumes missed. The main text's statement that Cirrus performed better therefore holds for the external data but not for the hold-out test set, where Topcon is higher; the external comparison also confounds device with site.
+  - **Readers (Supplementary Table 3).** On a 200-volume comparison set, the system has sensitivity 0.910 and specificity 0.937 (AUROC 0.971), while three retina experts have sensitivity 0.944–1.000 and specificity 0.658–0.928.
+  - **Two printing errors, copied as printed and flagged.** The experts' average F1 is printed as 1.957 and 1.871, which is impossible; the counts give 0.887 for DME. Supplementary Table 4 is captioned as covering testing and external validation, but its totals (71 FP / 102 FN) equal Chaozhou alone.
 
 **Figure 3** therefore shows published AUROCs as a grouped forest-style display:
 
@@ -221,7 +266,7 @@ No per-epoch logs survive for B0 or the label-smoothing run. Validation is the p
 
 ## 15. Limitations
 
-- No external validation. Every result is internal to the Kermany dataset.
+- External evidence is limited to three small public datasets (§7.4): OCTDL (Optovue, DME vs normal B-scans), Duke 2014 (Spectralis, 15 DME / 15 normal volumes) and Duke 2015 (Spectralis, DME only, so sensitivity only). None is a clinically graded, prospective cohort. The models are foveal B-scan classifiers, and no volume-level aggregation rule has been validated.
 - The official test set is small, balanced (prevalence 50%), and distributionally unlike the training data. PPV does not transfer to screening prevalence.
 - Patient is the finest grouping available; correlated B-scans from one eye or volume cannot be identified.
 - The original tuned thresholds and temperatures were not valid (§7.2). They have been refit on the rebuilt training-time split; the refit depends on reproducing the scikit-learn 1.4.2 partition, which was confirmed by exact count matching rather than a saved manifest.
@@ -283,19 +328,25 @@ uv pip install --python .venv-sk142 "scikit-learn==1.4.2" "numpy==1.26.*" "panda
 python research_outputs/scripts/12_refit_calibration_threshold.py
 ```
 
+**External evaluation (script 13).** Download OCTDL from Mendeley Data (doi:10.17632/sncdhf53xc.4; files `OCTDL.zip` and `OCTDL_labels.csv`) into `data/external/octdl/` and unzip it there. Download Duke 2014 (`2014_BOE_Srinivasan.zip`, 626 MB, from people.duke.edu/~sf59) into `data/external/duke2014/` and unzip it there. Duke 2015 is the local segmentation dataset. A full run takes about 20 minutes on CPU; `--posthoc-only` recomputes the post-hoc Duke 2014 analysis from the saved predictions.
+
+```bash
+python research_outputs/scripts/13_external_validation.py
+```
+
 ## 17. Results by provenance
 
 | Category | Items |
 |---|---|
 | Existing results [E] | `metrics.json` aggregates; Grad-CAM randomisation check; training logs; segmentation log values |
 | Independently reconstructed [R] | all test-set confusion matrices and metrics, AUROC, calibration metrics; segmentation Dice/IoU; split counts |
-| New analyses [N] | CIs and paired tests; duplicate and patient-overlap scan; dimension and border-artifact analyses; validation-split mismatch diagnosis and measured contamination (84.3%); training-time split rebuild and threshold/temperature refit; supplementary unseen-pool evaluation; segmentation failure-mode analysis; literature extraction |
-| Unverified [U] | Zhu 2025 supplementary per-device results |
+| New analyses [N] | External evaluation on OCTDL, Duke 2014 and Duke 2015; CIs and paired tests; duplicate and patient-overlap scan; dimension and border-artifact analyses; validation-split mismatch diagnosis and measured contamination (84.3%); training-time split rebuild and threshold/temperature refit; supplementary unseen-pool evaluation; segmentation failure-mode analysis; literature extraction |
+| Unverified [U] | None outstanding for the literature extraction. Not tested: the reason for the OCTDL misses (label definition vs device) |
 
 ## 18. Recommended future experiments
 
 1. ~~Rebuild the training-time split with scikit-learn 1.4.2 and refit the threshold and temperature.~~ **Done** (§7.2, scripts 11–12). Remaining: save the split manifest at training time in future runs, and pin scikit-learn in `requirements.txt`.
-2. Evaluate the frozen checkpoints on an external DME dataset from a different site or device, with patient-level labels.
+2. ~~Evaluate on an external DME dataset from a different site or device~~ **Partly done** (§7.4: OCTDL, Duke 2015). Duke Srinivasan 2014 was added later (§7.4). Remaining: a clinically graded diabetic cohort, and a volume aggregation or foveal slice-selection rule fixed on separate data. The Isfahan MISP Basel set (swept-source OCT, 40 DME / 50 healthy volumes) was identified but not downloaded.
 3. Save per-image predictions in `evaluate.py` for every future run.
 4. Re-train the U-Net with ungraded pixels masked out of the loss and metric, a positive-class weight, and a sanity check against all-foreground and all-background baselines.
 5. If volumes become available, evaluate at the volume level to allow category-A/B comparison with Tang 2021.
