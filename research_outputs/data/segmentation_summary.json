@@ -15,15 +15,22 @@
     "mean_dice_pipeline_convention": 0.013886346388811548,
     "mean_iou_pipeline_convention": 0.007098097999410882,
     "pooled_dice_pipeline": 0.014096240561733864,
-    "mean_dice_graded_only": 0.021216168587827124,
-    "pooled_dice_graded_only": 0.02170764057360302,
+    "mean_dice_graded_only": 0.029961205268761424,
+    "pooled_dice_graded_only": 0.030799397495213477,
     "mean_dice_fluid_positive_images_only": 0.017970565914645343,
     "mean_pred_frac_of_frame": 0.9999485085227273,
     "min_pred_frac_of_frame": 0.99986328125,
-    "mean_gt_frac_of_graded": 0.010983476064997805,
+    "mean_gt_frac_of_graded": 0.015732834272044763,
     "mean_prob": 0.9800209105014801,
     "inter_grader_mean_dice_graded": 0.5224959068507805,
-    "inter_grader_mean_dice_graded_fluid_positive": 0.5585241142505859
+    "inter_grader_mean_dice_graded_fluid_positive": 0.5585241142505859,
+    "graded_columns_min_max": [
+      536,
+      542
+    ],
+    "graded_band_same_both_graders_all": true,
+    "nan_fluid_pixels_total": 0,
+    "fluid_pixels_outside_band_total": 0
   },
   "test": {
     "subjects": [
@@ -35,14 +42,21 @@
     "mean_dice_pipeline_convention": 0.008952530804772168,
     "mean_iou_pipeline_convention": 0.0045261524698057215,
     "pooled_dice_pipeline": 0.009011493277616921,
-    "mean_dice_graded_only": 0.013757109529825408,
-    "pooled_dice_graded_only": 0.013896574377202858,
+    "mean_dice_graded_only": 0.019619687207629855,
+    "pooled_dice_graded_only": 0.020424904521183628,
     "mean_dice_fluid_positive_images_only": 0.014068262692655343,
     "mean_pred_frac_of_frame": 0.9999520596590912,
     "min_pred_frac_of_frame": 0.999873046875,
-    "mean_gt_frac_of_graded": 0.006996596398770313,
+    "mean_gt_frac_of_graded": 0.010049112347149931,
     "mean_prob": 0.9808385914022272,
     "inter_grader_mean_dice_graded": 0.7581869617091802,
-    "inter_grader_mean_dice_graded_fluid_positive": 0.6200080826858547
+    "inter_grader_mean_dice_graded_fluid_positive": 0.6200080826858547,
+    "graded_columns_min_max": [
+      500,
+      542
+    ],
+    "graded_band_same_both_graders_all": true,
+    "nan_fluid_pixels_total": 0,
+    "fluid_pixels_outside_band_total": 0
   }
 }

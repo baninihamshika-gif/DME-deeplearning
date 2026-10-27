@@ -8,8 +8,12 @@ constructor and Dice/IoU functions, then adds what the original evaluation
 did not report:
   * predicted and ground-truth foreground fractions per image (detects
     "predict everything" / "predict nothing" collapse)
-  * Dice/IoU with segment.py's convention (ungraded NaN -> background) AND
-    restricted to the manually graded region only
+  * Dice/IoU with segment.py's convention (whole frame, ungraded -> background) AND
+    restricted to the manually graded region only. The graded region is the
+    column band where manualLayers1 has coordinates: manualFluid1/2 contain no
+    NaN, and the ungraded side margins are stored as 0 (same as "no fluid").
+    (Corrected 2026-10-28; the first version used ~isnan(manualFluid1), which
+    covers the whole frame.)
   * pooled (pixel-aggregated) Dice in addition to the per-image mean
   * explicit counts of empty-ground-truth images and how they score
   * grader-1 vs grader-2 agreement on the same scans, as a human reference
@@ -60,7 +64,11 @@ def main():
             img = sub["images"][pos]
             f1_raw, f2_raw = sub["fluid1"][pos], sub["fluid2"][pos]
             gt1 = S.binarize_fluid(f1_raw); gt2 = S.binarize_fluid(f2_raw)
-            graded1 = (~np.isnan(f1_raw)).astype(np.uint8)
+            # Graded region = the columns where grader 1 traced layer boundaries. manualFluid stores
+            # ungraded side margins as 0 (no NaN anywhere), so ~isnan(fluid) would be the whole frame.
+            band = ~np.all(np.isnan(sub["layers1"][pos]), axis=0)
+            band2 = ~np.all(np.isnan(sub["layers2"][pos]), axis=0)
+            graded1 = (np.broadcast_to(band, f1_raw.shape) & ~np.isnan(f1_raw)).astype(np.uint8)
             rgb, gt1_lb = S.preprocess_pair(img, gt1)
             _, gt2_lb = S.preprocess_pair(img, gt2)
             _, graded_lb = S.preprocess_pair(img, graded1)
@@ -79,6 +87,9 @@ def main():
             rows.append({
                 "split": split_name, "subject": e["subject"], "scan_idx": e["scan_idx"],
                 "gt_fluid_pixels": int(gt1_lb.sum()), "gt_empty": bool(gt1_lb.sum() == 0),
+                "graded_columns": int(band.sum()), "graded_band_same_both_graders": bool(np.array_equal(band, band2)),
+                "nan_fluid_pixels": int(np.isnan(f1_raw).sum()),
+                "gt1_fluid_outside_band": int(gt1[:, ~band].sum()), "gt2_fluid_outside_band": int(gt2[:, ~band].sum()),
                 "graded_pixels": int(g.sum()), "frame_pixels": int(pred.size), "content_pixels": int(content.sum()),
                 "pred_fluid_pixels": int(pred.sum()), "pred_frac_of_frame": float(pred.mean()), "pred_frac_of_graded": float(pred[g].mean()) if g.any() else np.nan,
                 "gt_frac_of_graded": float(gt1_lb[g].mean()) if g.any() else np.nan,
@@ -107,6 +118,10 @@ def main():
             "mean_gt_frac_of_graded": d.gt_frac_of_graded.mean(), "mean_prob": d.mean_prob.mean(),
             "inter_grader_mean_dice_graded": d.dice_grader2_vs_grader1_graded.mean(),
             "inter_grader_mean_dice_graded_fluid_positive": d[~d.gt_empty].dice_grader2_vs_grader1_graded.mean(),
+            "graded_columns_min_max": [int(d.graded_columns.min()), int(d.graded_columns.max())],
+            "graded_band_same_both_graders_all": bool(d.graded_band_same_both_graders.all()),
+            "nan_fluid_pixels_total": int(d.nan_fluid_pixels.sum()),
+            "fluid_pixels_outside_band_total": int(d.gt1_fluid_outside_band.sum() + d.gt2_fluid_outside_band.sum()),
         }
     with open(OUT / "segmentation_summary.json", "w") as f:
         json.dump(summ, f, indent=2, default=float)

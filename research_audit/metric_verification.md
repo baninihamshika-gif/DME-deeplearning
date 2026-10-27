@@ -114,12 +114,12 @@ See `research_outputs/data/segmentation_summary.json` and `segmentation_per_imag
 | Item | Verified |
 |---|---|
 | Model | `smp.Unet(encoder="timm-efficientnet-b3")`, encoder initialised from the B3 classifier |
-| Target | Binary fluid mask = any labelled region in Duke `manualFluid1` (grader 1). NaN (ungraded) pixels are counted as background. |
+| Target | Binary fluid mask = any labelled region in Duke `manualFluid1` (grader 1). Only a central band of columns is graded: the columns where `manualLayers` has coordinates, 500–542 of 768 per scan, identical for both graders. `manualFluid1/2` contain **no NaN** on any annotated scan; the ungraded side margins are stored as 0, the same as "graded, no fluid". `segment.py` therefore counts them as background. (Corrected 2026-10-28: this row previously said the ungraded pixels were NaN.) |
 | Data and split | Duke DME (Chiu et al. 2015), 10 subjects × 11 annotated B-scans. Patient split with seed 42: train 6 subjects (66 scans), val 2 (01, 08; 22 scans), test 2 (06, 07; 22 scans). Disjoint by construction; re-derived identically here. |
 | Checkpoint | Epoch **1** of 6 (early stopping; validation Dice never improved after epoch 1) |
 | Threshold | sigmoid > 0.5 |
 | Metric | Per-image Dice and IoU with eps = 1e-7, averaged over images. An empty ground truth with a non-empty prediction scores 0. Test set: 8 of 22 scans have an empty ground truth. |
-| **Reconstructed test Dice / IoU** | **0.0090 / 0.0045** (mean per image; matches the reported 0.0090 / 0.0045). Pooled pixel Dice is 0.0090. Restricted to graded pixels: 0.0139. Fluid-positive scans only: 0.0141. |
+| **Reconstructed test Dice / IoU** | **0.0090 / 0.0045** (mean per image; matches the reported 0.0090 / 0.0045). Pooled pixel Dice is 0.0090. Restricted to the graded column band: mean 0.0196, pooled 0.0204 (val 0.0300 / 0.0308). Fluid-positive scans only: 0.0141. (Corrected 2026-10-28: the first audit masked `~isnan(manualFluid1)`, which is the whole frame, and reported 0.0139 as graded-only.) |
 | **Failure mode** | The model labels **99.995% of every 320×320 frame as fluid**, including the zero padding (mean probability 0.98). This is complete collapse to the positive class. The Phase 4 sign-off's statement that a Dice near 0.01 is "close to what a model predicting almost no foreground would score" is **incorrect**: under this metric, predicting nothing would score 0 on fluid scans and 1 on empty scans. |
-| Human reference | Grader 2 vs grader 1 on the same test scans, graded region only: mean Dice 0.758 (0.620 on fluid-positive scans) |
+| Human reference | Grader 2 vs grader 1 on the same test scans, graded band only: mean Dice 0.758 (0.620 on fluid-positive scans; val 0.522). This value is unchanged by the band correction, because neither grader marks fluid outside the band (0 pixels on all 44 val/test scans). |
 | Verdict | Segmentation is **implemented and evaluated, but the model is non-functional**. No performance figure is produced; an audit finding is reported instead. |

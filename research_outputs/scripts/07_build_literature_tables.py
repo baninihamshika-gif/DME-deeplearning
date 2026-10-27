@@ -16,7 +16,11 @@ on 2026-10-27 and carries its exact table location. Sources read:
   Singh & Gorantla 2020 (PLoS ONE 15(2):e0220677), Rodríguez-Miguel et al. 2024
     (Sci Rep 14:17633) and Li F et al. 2019 (Biomed Opt Express 10(12):6204):
     article PDFs supplied by the user, read 2026-10-28 (text via pdfplumber;
-    DMENet Fig 6A read from the rendered page).
+    DMENet Fig 6A read from the rendered page), plus Rodríguez-Miguel's
+    Supplementary Material 1 (docx from the article page). Authors, title,
+    journal, volume, issue, first page/article number and date of all three
+    were checked against Crossref on 2026-10-28 (all match); the BOE end page
+    (6226) comes from the PDF, as Crossref lists the first page only.
 Published values are copied as printed, including internally inconsistent
 values (two CIs in Tang 2021; others in the three 2019-2024 papers), which are
 flagged in the notes column, not corrected. comparability_category is set
@@ -148,12 +152,12 @@ for src, ds, n, ac, se, sp, f1, a, note in s20:
                  evaluation_unit="fundus image", n_evaluated=n, accuracy=ac, sensitivity=se, specificity=sp, f1=f1, auroc=a, auroc_ci_lo="NR", auroc_ci_hi="NR",
                  notes=(SNOTE + " " + note).strip(), comparability_category="D"))
 
-# ---------------- Rodríguez-Miguel et al. 2024 (Sci Rep 14:17633), article PDF supplied by the user.
-# Supplementary Material 1 (ground-truth test-set metrics) was not obtained: NR.
+# ---------------- Rodríguez-Miguel et al. 2024 (Sci Rep 14:17633), article PDF supplied by the user, and
+# Supplementary Material 1 (41598_2024_68489_MOESM2_ESM.docx, downloaded from the article page 2026-10-28).
 R24 = "Rodríguez-Miguel 2024, Sci Rep, doi:10.1038/s41598-024-68489-2"
 RNOTE = ("Hybrid CNN-RNN on 22 automatically selected B-scans (12 foveal, every 2nd of slices 60-85; 10 parafoveal, every 10th) of a 128-slice Topcon cube; "
          "CNN backbone pre-trained on Kermany OCT2017 (the dataset this project trains on). Models were trained on a separate 650-cube ground-truth set "
-         "(433/100/117 train/val/test, subject-disjoint); its test metrics are in Supplementary Material 1 (not obtained). "
+         "(433/100/117 train/val/test, subject-disjoint); 7 of them were kept for 'the best generalizable metrics in the test set' (Supplementary Material 1). "
          "Evaluation cohort: retrospective real-world DR screening, 5,314 cubes from 4,408 subjects, prevalence 2.37%; reference = screening retina specialist "
          "(thickening >= 300 um plus anatomical signs). Thresholds were tuned over 1,000 values on this same cohort (Youden / highest sensitivity / highest specificity), "
          "so operating points are optimistic. Repeat screens of the same subject are included; the binomial CIs treat cubes as independent.")
@@ -176,6 +180,27 @@ for model, thr, se, seci, sp, spci, a, lo, hi, n, note in r24:
                  cohort_role="retrospective screening cohort (separate from the training set; same programme, thresholds tuned on it)", evaluation_unit="OCT cube (screening visit)",
                  n_evaluated=n, accuracy="NR", sensitivity=se, specificity=sp, f1="NR", auroc=a, auroc_ci_lo=lo, auroc_ci_hi=hi,
                  sensitivity_ci=seci, specificity_ci=spci, accuracy_ci="NR", notes=(RNOTE + " " + note).strip(), comparability_category="C"))
+
+# Supplementary Material 1, first table: ground-truth test split (117 cubes: 40 DME / 77 non-DME); no sensitivity/specificity/CIs printed.
+SUPPNOTE = ("Supplementary Material 1 also: (i) the listed slice positions (1, 11, ..., 51, 61-85 every 2nd, 95, 115, 125) give 13 foveal + 9 parafoveal slices, "
+            "not the stated 12 + 10 (slice 105 skipped), and the figure caption says a 126-slice cube; (ii) it describes the Kermany pre-training data as "
+            "'acquired with different OCT manufacturers', whereas Kermany's STAR Methods report Spectralis; (iii) the pre-trained 4-class CNN scored "
+            "accuracy 0.909 / AUROC 0.987 on the 1,000-image Kermany test set.")
+r24s = [  # model, config, acc, auroc, auprc
+    ("Model 1", "biRNN(10), 24 CNN output neurons", 0.915, 0.960, 0.934),
+    ("Model 2", "biLSTM(11), 24 CNN output neurons", 0.890, 0.944, 0.894),
+    ("Model 3", "biGRU(5), 20 CNN output neurons", 0.880, 0.962, 0.940),
+]
+for model, cfg, ac, a, ap in r24s:
+    L.append(row(study=R24, source_location="Supplementary Material 1, table 'Training and test results of the CNN-RNN models over the ground truth dataset'",
+                 model=f"Hybrid CNN-RNN, {model} ({cfg})", input_representation="22-B-scan subset of a 3D OCT cube",
+                 task="DME vs non-DME (expert ground truth)", positive_class="DME (retina experts' ground truth)", device="Topcon 3D OCT-Maestro 1",
+                 dataset="Ground-truth set test split (two Spanish DR screening programmes)",
+                 cohort_role="internal held-out test (subject-disjoint), also used to select the 7 retained models", evaluation_unit="OCT cube",
+                 n_evaluated="117 cubes (40 DME / 77 non-DME)", accuracy=ac, sensitivity="NR", specificity="NR", f1="NR", auroc=a, auroc_ci_lo="NR", auroc_ci_hi="NR",
+                 notes=(f"AUPRC {ap}. Optimistic: this test split was used to choose which models to keep, and the final three were chosen on the screening cohort. "
+                        "The three best models on the screening cohort (main-text models 1-3) carry the same numbers in the supplement's second table (AUROC 0.94 each), "
+                        "so the numbering is taken to be shared across both tables. " + SUPPNOTE), comparability_category="C"))
 
 # ---------------- Li F et al. 2019 (Biomed Opt Express 10(12):6204-6226), article PDF supplied by the user.
 L19 = "Li F 2019, Biomed Opt Express, doi:10.1364/BOE.10.006204"
@@ -261,7 +286,7 @@ CM = [
     dict(candidate="Rodríguez-Miguel 2024 CNN-RNN on 22-slice cubes (Table 2)", input="22 B-scans of a 3D cube / different", task="DME vs non-DME in unselected screening attendees / different population and prevalence (2.4%)",
          population="Madrid DR screening programme / different", device="Topcon 3D OCT-Maestro 1 / different", unit="OCT cube / different",
          test_construction="whole screening cohort, separate from the 650-cube training set", validation="temporal/real-world cohort, same programme", balance="126 / 5188",
-         selection="thresholds tuned on the evaluation cohort", metric_scale="%", uncertainty="binomial CIs (one copied interval flagged)", comparable="no (unit, device and spectrum differ)", category="C",
+         selection="7 models kept on the 117-cube ground-truth test split, final 3 and thresholds chosen on the evaluation cohort", metric_scale="%", uncertainty="binomial CIs (one copied interval flagged)", comparable="no (unit, device and spectrum differ)", category="C",
          plot="Table 3; Figure 3 contextual panel (model 2 AUROC)"),
     dict(candidate="Singh & Gorantla 2020 DMENet (fundus)", input="colour fundus photograph / different modality", task="hard-exudate DME grade / different definition", population="IDRiD + MESSIDOR / different",
          device="fundus cameras / different", unit="fundus image", test_construction="5-fold CV on augmented images", validation="internal", balance="augmented to balance", selection="NR",
