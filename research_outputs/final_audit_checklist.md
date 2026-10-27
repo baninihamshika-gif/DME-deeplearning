@@ -36,12 +36,13 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 | B2 | Undefined metrics handled explicitly | **PASS** | NaN logic in `04_compute_metrics.py`; none occurred |
 | B3 | 14-point leakage audit | **PASS** | `leakage_audit.md` §1 |
 | B3 | Metadata/dimension-only shortcut classifier | **PASS** | Test AUROC 0.31; unseen-pool AUROC 0.72 |
-| B4 | Segmentation independently re-evaluated | **PASS** (reconstructed) · segmentation model itself **FAIL** (collapsed) | Dice 0.0090 reproduced; all-foreground collapse documented |
+| B4 | Segmentation independently re-evaluated | **PASS** (pipeline-convention Dice reconstructed) · graded-region metrics **DEFECT** · segmentation model itself **FAIL** (collapsed) | Dice 0.0090 reproduced; all-foreground collapse documented. The 'graded-only' variant in script 05 masks `~isnan(manualFluid)`, but Duke 2015 stores ungraded side margins as 0, not NaN (verified: 0 NaN pixels; graded columns 118–653 of 768 on Subject_01), so it covers the whole frame. See unresolved issue 4 |
 | B5 | Calibration audited | **PASS** | Raw vs calibrated reported separately; no material change claimed |
 | B5 | Grad-CAM audited | **PASS** (protocol reviewed) | Not regenerated; no clinical-reasoning claim made |
 | C | 2021 paper read in full incl. supplement | **PASS** | PMC HTML + figshare supplementary tables and methods |
 | C | 2025 paper read in full | **PASS** (main text and online supplement) | PMC XML and publisher PDF agree; supplement (`bmjopen-15-5-s001.docx`, supplied by the user) read in full; two printing errors flagged |
-| C | `literature_extraction.csv`, `references.bib` | **PASS** | Crossref-verified bibliographic data |
+| C | Li F 2019, Rodríguez-Miguel 2024, Singh & Gorantla 2020 read in full | **PASS** | Article PDFs (supplied by the user) plus the Sci Rep Supplementary Material 1; 15 rows; inconsistencies flagged in notes (report §8) |
+| C | `literature_extraction.csv`, `references.bib` | **PASS** | Crossref-verified bibliographic data for all five papers (BOE end page from the PDF) |
 | D | Comparability matrix before plotting | **PASS** | `research_audit/comparability_matrix.csv` (A/B/C/D) |
 | D | Paired tests, multiple-comparison handling | **PASS** | McNemar + Holm; paired DeLong undefined (both AUROC = 1), stated |
 | D | No cross-study significance tests or invented CIs | **PASS** | None performed; published CIs copied as printed |
@@ -57,7 +58,9 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 | F | Results report | **PASS** | `research_outputs/research_results_report.md` |
 | F | External validation claimed only if performed | **PASS** | External evaluation performed on OCTDL, Duke 2014 and Duke 2015 (report §7.4) and described with its limits; no clinical validation claimed |
 
-## Files created (no existing files modified)
+## Files created
+
+Audit outputs were added in new directories. The only existing files modified are `requirements.txt` (scikit-learn pinned to 1.4.2), `train.py` (writes `split_manifest.csv`) and `evaluate.py` (writes `predictions.csv`); model logic, checkpoints and source results are unchanged (check 10).
 
 - `research_audit/`: `repository_inventory.md`, `metric_verification.md`, `leakage_audit.md`, `literature_extraction.csv`, `comparability_matrix.csv`, `references.bib`, `checksums_before.sha256`
 - `research_outputs/research_results_report.md`, `research_outputs/final_audit_checklist.md`, `research_outputs/.gitignore` (ignores `.cache/`)
@@ -72,6 +75,6 @@ Automated results: `research_outputs/data/final_checks.json` (from `scripts/10_f
 1. ~~Tuned thresholds and temperatures are invalid~~ **Resolved:** refit on the rebuilt training-time validation split (scripts 11–12). Residual caveat: on the easier test set the refit operating points give perfect or near-perfect counts, and refit scaling worsens test ECE for B3 and B0; validation specificity at 97% sensitivity (0.956–0.982) is the more realistic figure.
 2. **External evidence is limited.** OCTDL (Optovue; AUROC 0.993–0.999, sensitivity at 0.5 0.93–0.96), Duke 2014 (volume AUROC 1.000, but the pre-specified max rule flags 4–9 of 15 normal volumes from off-centre slices) and Duke 2015 (DME only; sensitivity 0.95–0.96) are small public sets, not a clinical cohort. The official test set also appears unrepresentative (easier). The unseen-pool estimate (AUROC 0.996–0.997, accuracy 97.1–97.5%) is the more conservative internal figure.
 3. ~~B0 test-patient exclusion cannot be confirmed from a log~~ **Resolved:** verified via run `20260920T095427Z` (bitwise-identical weights; exclusion logged).
-4. **The segmentation model is non-functional**, and its ground-truth handling of ungraded pixels is flawed.
+4. **The segmentation model is non-functional**, and its ground-truth handling of ungraded pixels is flawed. The audit's own 'graded-only' re-evaluation (script 05) has the same flaw: ungraded margins are stored as 0, so its graded mask is the whole frame. The graded region is the column band where `manualLayers` has coordinates. Affected: the model's 'graded-only' Dice in `segmentation_summary.json` (test 0.0138, val 0.0212), which is effectively whole-frame, and the NaN premise in `metric_verification.md` B4 and inventory item C6. Unaffected: the collapse finding, the pipeline-convention Dice (0.0090) and the inter-grader Dice (0.758 test / 0.522 val), because neither grader marks fluid outside the band. Fix: recompute script 05 with the band as the graded mask.
 5. ~~Zhu 2025 online supplementary tables not retrieved~~ **Resolved:** supplement read in full. Confusion matrices recompute every metric; per-device and reader-comparison rows were added to `literature_extraction.csv`.
 6. ~~Kermany device and grading details from prior knowledge~~ **Resolved:** verified against the published STAR Methods (archived Cell full text): Spectralis OCT; five centres; July 2013 – March 2017; three-tier grading (students → four ophthalmologists → two senior retinal specialists).
