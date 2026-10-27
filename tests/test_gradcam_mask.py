@@ -57,3 +57,22 @@ def test_mask_cam_to_image():
     assert (out[~valid] == 0).all()
     assert np.isclose(out[valid].max(), 1.0)
     assert np.allclose(out[valid], cam[valid] / cam[valid].max())
+
+
+def test_generate_app_cam_shape_range_and_target():
+    import timm
+    import torch
+
+    import train
+    from app import GRADCAM_BLOCK, _LogitDifference, generate_app_cam
+
+    model = timm.create_model(train.MODEL_NAME, pretrained=False, num_classes=len(config.CLASS_NAMES)).eval()
+    assert len(model.blocks) > GRADCAM_BLOCK
+    x = torch.randn(1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)
+    for cls in (0, 1):
+        cam = generate_app_cam(model, x, cls)
+        assert cam.shape == (config.IMAGE_SIZE, config.IMAGE_SIZE)
+        assert cam.min() >= -1e-6 and cam.max() <= 1 + 1e-6
+    logits = torch.tensor([[0.2, 1.5]])
+    assert torch.isclose(_LogitDifference(1)(logits), torch.tensor([1.3])).all()
+    assert torch.isclose(_LogitDifference(0)(logits), torch.tensor([-1.3])).all()
