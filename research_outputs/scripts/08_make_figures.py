@@ -168,7 +168,7 @@ def figure3():
     for _, r in z.iterrows():
         items.append(("Context only (category C) — volume-level evaluation", f"Zhu 2025 · 3D CNN · {'hold-out test' if r.dataset == 'Testing' else 'external validation (total)'}",
                       float(r.auroc), float(r.auroc_ci_lo), float(r.auroc_ci_hi), False))
-    rm = lit[lit.study.str.startswith("Rodríguez-Miguel 2024") & (lit.auroc != "NR")]
+    rm = lit[lit.study.str.startswith("Rodríguez-Miguel 2024") & lit.source_location.str.startswith("Table 2") & (lit.auroc != "NR")]
     for _, r in rm.iterrows():
         items.append(("Context only (category C) — volume-level evaluation", "Rodríguez-Miguel 2024 · CNN-RNN (model 2) · screening cohort",
                       float(r.auroc), float(r.auroc_ci_lo), float(r.auroc_ci_hi), False))

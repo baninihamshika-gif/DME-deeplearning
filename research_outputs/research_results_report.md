@@ -186,7 +186,7 @@ Sources were read in full: Tang et al. 2021 (PMC full text plus figshare supplem
   - **Readers (Supplementary Table 3).** On a 200-volume comparison set, the system has sensitivity 0.910 and specificity 0.937 (AUROC 0.971), while three retina experts have sensitivity 0.944–1.000 and specificity 0.658–0.928.
   - **Two printing errors, copied as printed and flagged.** The experts' average F1 is printed as 1.957 and 1.871, which is impossible; the counts give 0.887 for DME. Supplementary Table 4 is captioned as covering testing and external validation, but its totals (71 FP / 102 FN) equal Chaozhou alone.
 
-**Three further studies (article PDFs supplied by the user, read in full 2026-10-28) [E].** They were extracted the same way as Zhu 2025: design, device, unit, cohort role, n and metrics with table locations, NR where not reported, and every printed metric checked against counts where counts could be derived. All three are in `literature_extraction.csv` (12 rows) and Table 3.
+**Three further studies (article PDFs supplied by the user, read in full 2026-10-28) [E].** They were extracted the same way as Zhu 2025: design, device, unit, cohort role, n and metrics with table locations, NR where not reported, and every printed metric checked against counts where counts could be derived. Rodríguez-Miguel's online Supplementary Material 1 was downloaded from the article page and read. Bibliographic details of all three were checked against Crossref: authors, title, journal, volume, issue, first page or article number, and date all match. All three studies are in `literature_extraction.csv` (15 rows) and Table 3.
 
 **Li F et al. 2019, Biomed Opt Express 10(12):6204 (category B for one row; the closest published analogue).**
 
@@ -202,7 +202,7 @@ Sources were read in full: Tang et al. 2021 (PMC full text plus figshare supplem
 
 **Rodríguez-Miguel et al. 2024, Sci Rep 14:17633 (category C).**
 
-- Design: a hybrid CNN-RNN reads 22 automatically selected B-scans from each 128-slice Topcon 3D OCT-Maestro cube, and its CNN backbone is pre-trained on Kermany OCT2017. Models were trained on a separate 650-cube ground-truth set, whose test metrics are only in a supplement that was not obtained (NR).
+- Design: a hybrid CNN-RNN reads 22 automatically selected B-scans from each 128-slice Topcon 3D OCT-Maestro cube, and its CNN backbone is pre-trained on Kermany OCT2017. Models were trained on a separate 650-cube ground-truth set.
 - Evaluation was on an unselected real-world DR screening cohort: 5,314 cubes from 4,408 subjects, 126 DME (2.37%), with the screening retina specialist's diagnosis as reference.
 - Model 2 AUROC 0.94 (0.91–0.97). Ensemble at the Youden threshold: sensitivity 88.9% (82.1–93.8), specificity 93.3% (92.6–94.0). At the high-specificity threshold: 81.0% / 97.0%, with PPV 39.5%. The high-specificity counts (FN 24, FP 156) are printed and recompute.
 - **Caveats:**
@@ -211,6 +211,12 @@ Sources were read in full: Tang et al. 2021 (PMC full text plus figshare supplem
 - **Inconsistencies, flagged:**
   - Every threshold-2 row prints the same sensitivity CI (82.1–93.8). For 116/126 the exact interval is 85.9–96.1, so this looks like a copy error.
   - The false-negative review gives "4 DMEs (12.1%)", which corresponds to 4/33, not the 24 false negatives.
+- **Supplementary Material 1:**
+  - On the ground-truth test split (117 cubes: 40 DME / 77 non-DME), main-text models 1–3 reach accuracy 0.915 / 0.890 / 0.880 and AUROC 0.960 / 0.944 / 0.962. No sensitivity, specificity or CIs are given.
+  - That split was also used to choose the seven retained models, and the final three were picked on the screening cohort. Both stages of selection are optimistic.
+  - The listed slice positions give 13 foveal + 9 parafoveal slices, not the stated 12 + 10 (slice 105 is skipped), and the figure caption says 126 slices.
+  - It describes Kermany as multi-manufacturer, whereas Kermany's STAR Methods report Spectralis (§2).
+  - The Kermany-pretrained 4-class CNN scored accuracy 0.909 / AUROC 0.987 on Kermany's 1,000-image test set.
 - This is the only study here evaluated at realistic screening prevalence. It shows how far PPV falls below what a balanced test set suggests, which is directly relevant to this project's 50%-prevalence test set (§15).
 
 **Singh & Gorantla 2020, PLoS ONE 15(2):e0220677 (DMENet; category D, not plotted).**
