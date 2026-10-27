@@ -21,7 +21,7 @@
   },
   "6_duplicates_and_patient_overlap": {
     "pass": true,
-    "detail": "patient overlap 0, exact dups test-pool 0, within test 0, dHash near-dup pairs 10 (all visually different eyes)"
+    "detail": "patient overlap 0, exact dups test-pool 0, within test 0, dHash near-dup pairs 5 (all visually distinct scans), images without a hash 0"
   },
   "7_roc_from_continuous_scores": {
     "pass": true,

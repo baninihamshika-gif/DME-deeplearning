@@ -63,7 +63,7 @@ def main():
            "368 patients; 6 patients have both DME and Normal images; 0 exact duplicates with the training pool; distribution differs from training (no 512x512 images)."),
         r1("Kermany OCT2017", "train/ images of the 305 test-set patients (excluded from training)", exc, "supplementary unseen evaluation pool (NEW in this audit)", "patient",
            "Not used for training/validation (verified for B3, ResNet-50; implied for B0); NOT independent of the test set (same patients; 114 byte-identical copies of test images)",
-           f"All {len(exc):,} images decoded with cv2.imread during re-inference (the hash scan's cv2.imdecode flagged {leak['unreadable_images']} truncated JPEGs across train/+test/ as undecodable; imread decodes them with a 'Premature end of JPEG' warning)."),
+           f"All {len(exc):,} images decoded with cv2.imread during re-inference. Across train/+test/, {leak['decoded_only_by_imread_fallback']} truncated JPEGs are rejected by cv2.imdecode but decode with cv2.imread (with a 'Premature end of JPEG' warning); {leak['unreadable_images']} are unreadable."),
         {"Dataset/source": "Duke DME (Chiu et al. BOE 2015)", "Subset": "segmentation (U-Net)", "Images": "110 annotated B-scans", "Unique patients": "10",
          "Eyes / volumes": "10 volumes (61 B-scans each; 11 annotated)", "DME-positive": "NA (all DME subjects)", "DME-negative (Normal)": "NA",
          "Split": f"train 6 / val 2 ({', '.join(seg['val']['subjects'])}) / test 2 ({', '.join(seg['test']['subjects'])}) subjects", "Unit of splitting": "patient",

@@ -132,7 +132,7 @@ check("5_positive_class_is_DME", bad == 0, f"{bad} rows where label != DME filen
 # 6 leakage
 lk = json.loads((DATA / "leakage_summary.json").read_text())
 check("6_duplicates_and_patient_overlap", lk["patient_overlap_test_vs_pool"] == 0 and lk["exact_dup_pairs_test_vs_pool"] == 0 and lk["exact_dup_pairs_within_test"] == 0,
-      f"patient overlap {lk['patient_overlap_test_vs_pool']}, exact dups test-pool {lk['exact_dup_pairs_test_vs_pool']}, within test {lk['exact_dup_pairs_within_test']}, dHash near-dup pairs {lk['near_dup_pairs_test_vs_pool']} (all visually different eyes)")
+      f"patient overlap {lk['patient_overlap_test_vs_pool']}, exact dups test-pool {lk['exact_dup_pairs_test_vs_pool']}, within test {lk['exact_dup_pairs_within_test']}, dHash near-dup pairs {lk['near_dup_pairs_test_vs_pool']} (all visually distinct scans), images without a hash {lk['unreadable_images']}")
 
 # 7 continuous scores
 nun = {f.stem: pd.read_csv(f).p_dme_raw.nunique() for f in DATA.glob("test_predictions_*.csv")}

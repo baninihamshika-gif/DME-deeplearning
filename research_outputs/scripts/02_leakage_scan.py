@@ -42,16 +42,32 @@ NEAR_DUP_HAMMING = 4  # <=4 of 64 bits differ
 
 
 def _hash_one(path: str):
+    """Returns (path, md5, width, height, dhash_hex, decoded_by).
+
+    dhash is a 16-character hex string, never a number: a 64-bit hash does
+    not fit in float64 (53-bit mantissa), and pandas silently stores a column
+    of large ints with gaps as float64, which corrupts Hamming distances.
+    Truncated JPEGs that cv2.imdecode rejects are retried with cv2.imread,
+    the decoder the training pipeline actually uses (utils.PreprocessCache).
+    """
     data = Path(path).read_bytes()
     md5 = hashlib.md5(data).hexdigest()
     img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_GRAYSCALE)
+    decoded_by = "imdecode"
     if img is None:
-        return path, md5, -1, -1, None
+        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        decoded_by = "imread_fallback"
+    if img is None:
+        return path, md5, -1, -1, "", "unreadable"
     h, w = img.shape
     small = cv2.resize(img, (9, 8), interpolation=cv2.INTER_AREA)
     bits = (small[:, 1:] > small[:, :-1]).flatten()
     dhash = int("".join("1" if b else "0" for b in bits), 2)
-    return path, md5, w, h, dhash
+    return path, md5, w, h, f"{dhash:016x}", decoded_by
+
+
+def hex_to_uint64(values) -> np.ndarray:
+    return np.array([int(v, 16) for v in values], dtype=np.uint64)
 
 
 def popcount64(x: np.ndarray) -> np.ndarray:
@@ -74,13 +90,19 @@ def main():
     df = pd.DataFrame(rows)
 
     hashes_path = OUT / "image_hashes.csv"
+    cached = None
     if hashes_path.exists():
-        h = pd.read_csv(hashes_path, dtype={"patient": str})
-        df = h
+        cached = pd.read_csv(hashes_path, dtype={"patient": str, "dhash": str}, keep_default_na=False)
+        # Caches written before the hex fix hold dhash as a float (e.g. "1.84e+19") -- lossy, recompute.
+        if "decoded_by" not in cached.columns or not cached.dhash.str.fullmatch(r"[0-9a-f]{16}|").all():
+            print("image_hashes.csv has lossy (float) dHash values -- recomputing")
+            cached = None
+    if cached is not None:
+        df = cached
     else:
         with ProcessPoolExecutor(max_workers=8) as ex:
             res = list(ex.map(_hash_one, df["path"].tolist(), chunksize=256))
-        r = pd.DataFrame(res, columns=["path", "md5", "width", "height", "dhash"])
+        r = pd.DataFrame(res, columns=["path", "md5", "width", "height", "dhash", "decoded_by"])
         df = df.merge(r, on="path")
         df["path"] = df["path"].map(lambda s: Path(s).relative_to(REPO).as_posix())
         df.to_csv(hashes_path, index=False)
@@ -98,7 +120,8 @@ def main():
         "n_test_patients": len(test_patients),
         "n_test_patients_also_in_train_folder": len(test_patients & set(train.patient)),
         "patient_overlap_test_vs_pool": len(test_patients & set(pool.patient)),
-        "unreadable_images": int((df.width < 0).sum()),
+        "unreadable_images": int((df.decoded_by == "unreadable").sum()),
+        "decoded_only_by_imread_fallback": int((df.decoded_by == "imread_fallback").sum()),
         "test_class_counts": test.label.map({1: "DME", 0: "Normal"}).value_counts().to_dict(),
         "test_images_per_patient": test.groupby("patient").size().describe().to_dict(),
         "test_patients_with_both_labels": int((test.groupby("patient").label.nunique() > 1).sum()),
@@ -122,11 +145,11 @@ def main():
     summary["exact_dup_pairs_within_pool_cross_label"] = int((ex_pp.label_a != ex_pp.label_b).sum())
 
     # --- near duplicates (dHash Hamming distance) ---
-    valid = df.dhash.notna()
+    valid = df.dhash != ""
     test_v = test[valid.loc[test.index]]
     pool_v = pool[valid.loc[pool.index]]
-    th = test_v.dhash.astype(np.uint64).to_numpy()
-    ph = pool_v.dhash.astype(np.uint64).to_numpy()
+    th = hex_to_uint64(test_v.dhash)
+    ph = hex_to_uint64(pool_v.dhash)
     pairs = []
     for i, hv in enumerate(th):
         d_pool = popcount64(ph ^ hv)

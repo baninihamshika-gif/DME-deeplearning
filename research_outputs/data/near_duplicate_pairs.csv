@@ -1,11 +1,6 @@
 kind,path_a,path_b,hamming,label_a,label_b
-test-pool,data/raw/OCT2017/test/DME/DME-4240465-1.jpeg,data/raw/OCT2017/train/NORMAL/NORMAL-2491520-6.jpeg,4,1,0
-test-pool,data/raw/OCT2017/test/NORMAL/NORMAL-153950-1.jpeg,data/raw/OCT2017/train/NORMAL/NORMAL-1956956-14.jpeg,4,0,0
-test-pool,data/raw/OCT2017/test/NORMAL/NORMAL-153950-1.jpeg,data/raw/OCT2017/train/NORMAL/NORMAL-2567-3.jpeg,4,0,0
-test-pool,data/raw/OCT2017/test/NORMAL/NORMAL-1759350-1.jpeg,data/raw/OCT2017/train/DME/DME-1837437-3.jpeg,4,0,1
+test-pool,data/raw/OCT2017/test/NORMAL/NORMAL-153950-1.jpeg,data/raw/OCT2017/train/NORMAL/NORMAL-1093065-3.jpeg,4,0,0
 test-pool,data/raw/OCT2017/test/NORMAL/NORMAL-1897894-1.jpeg,data/raw/OCT2017/train/NORMAL/NORMAL-3988014-9.jpeg,4,0,0
-test-pool,data/raw/OCT2017/test/NORMAL/NORMAL-2579419-1.jpeg,data/raw/OCT2017/train/DME/DME-1702663-16.jpeg,4,0,1
 test-pool,data/raw/OCT2017/test/NORMAL/NORMAL-3256489-1.jpeg,data/raw/OCT2017/train/NORMAL/NORMAL-1022943-3.jpeg,4,0,0
 test-pool,data/raw/OCT2017/test/NORMAL/NORMAL-338568-1.jpeg,data/raw/OCT2017/train/NORMAL/NORMAL-4598365-3.jpeg,4,0,0
-test-pool,data/raw/OCT2017/test/NORMAL/NORMAL-338568-1.jpeg,data/raw/OCT2017/train/NORMAL/NORMAL-6619698-12.jpeg,4,0,0
-test-pool,data/raw/OCT2017/test/NORMAL/NORMAL-524640-1.jpeg,data/raw/OCT2017/train/NORMAL/NORMAL-4689583-5.jpeg,3,0,0
+test-pool,data/raw/OCT2017/test/NORMAL/NORMAL-524640-1.jpeg,data/raw/OCT2017/train/NORMAL/NORMAL-4689583-5.jpeg,4,0,0

@@ -84,7 +84,7 @@ Details: `research_audit/leakage_audit.md`.
 ### 7.1 No leakage or shortcut explains the test result [R/N]
 
 - Patient overlap test↔training pool is 0, and exact duplicates are 0.
-- 10 perceptual-hash candidate near-duplicates were inspected visually; all are different eyes.
+- 5 perceptual-hash candidate near-duplicates (all Normal–Normal) were inspected visually; all are visibly different scans. (An earlier count of 10 came from lossy float-stored hashes; corrected.)
 - The class mapping is correct, and the test set was never used for selection.
 - A geometry-only classifier scores AUROC 0.31 on the test set (the cue reverses between train and test), so a dimension shortcut cannot produce the perfect test score.
 - A white rotation-fill corner artifact is balanced by class in training (AUROC 0.49 as a feature).
