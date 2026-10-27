@@ -131,7 +131,7 @@ more informative per-image number. Pooled = pixel counts summed over all scans o
 | Grader 2 vs grader 1 | 0.694 | 0.531 | 0.755 | 0.615 | 0.471 |
 
 - **Per subject (model, pooled Dice):** val 01 0.824, 08 0.641; test 06 0.694, 07 0.797. Subject 07 has only 4 fluid-positive scans.
-- **Threshold 0.5 instead of 0.8, for reference only (not selected):** test pooled Dice 0.677, mean Dice (fluid+) 0.635.
+- **Threshold 0.5 instead of 0.8, for reference only (not selected):** test pooled Dice 0.677, mean Dice (fluid+) 0.634.
 - **Model vs grader 2, mean Dice on grader-1 fluid-positive scans:** val 0.574, test 0.629.
 - **False positives on fluid-free scans:** the model predicted some fluid on 0/5 val and 1/8 test scans with no grader-1 fluid. The test case is Subject_06 scan 15, with 196 px.
 - **Boundary distance:** mean symmetric surface distance on fluid-positive scans was 9.8 px on val and 26.9 px on test. Grader 2 vs grader 1 was 24.5 px and 5.7 px. These figures are driven by a few scans with small or misplaced regions; for example, test Subject_06 scan 10 has Dice 0 against a 354 px grader-1 region.

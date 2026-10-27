@@ -45,6 +45,7 @@ def ci(v, lo, hi, d=3):
 
 def table6():
     pp = pd.read_csv(DATA / "per_paper_comparison.csv", dtype={"n": str})
+    seg2 = json.loads((REPO / "research_outputs" / "segmentation_retrain_v2" / "segmentation_summary.json").read_text())["test"]  # current U-Net
     sources = ["This project", "Tang 2021", "Zhu 2025", "Li F 2019", "Rodríguez-Miguel 2024", "Singh & Gorantla 2020"]
     names = {"accuracy": "Accuracy", "sensitivity": "Sensitivity", "specificity": "Specificity", "f1": "F1", "auroc": "AUROC"}
     f = lambda v: "NR" if pd.isna(v) else f"{v:.3f}"
@@ -76,7 +77,8 @@ def table6():
             col["Unit-matched project value (EfficientNet-B3, 0.5)"] = (f"{q.setting}: Sens {f(q.sensitivity)}, Spec {f(q.specificity)}, AUROC {f(q.auroc)}")
         col["Learning curves"] = "Figure 4" if s == "This project" else "NR"
         col["Calibration (ECE / Brier)"] = "Figure 5, Table 2" if s == "This project" else "NR"
-        col["Fluid segmentation (Dice)"] = "Report §10 (retrained U-Net, pooled Dice 0.706)" if s == "This project" else "NA (classification only)"
+        col["Fluid segmentation (Dice)"] = (f"Report §10.2 (retrained U-Net v2, test pooled Dice {seg2['model']['pooled_dice']:.3f}; graders {seg2['inter_grader_g2_vs_g1']['pooled_dice']:.3f})"
+                                            if s == "This project" else "NA (classification only)")
         cols[s] = col
     out = pd.DataFrame(cols); out.index.name = "Item"
     return out.reset_index()
@@ -190,11 +192,11 @@ def main():
         ("Threshold selection", "0.5 (primary, pre-specified by argmax). Tuned threshold: highest specificity with validation sensitivity >= 0.97 (evaluate.sweep_threshold). Originally fitted on a mismatched validation set (superseded); refit in this audit on the training-time split rebuilt with scikit-learn 1.4.2 (n=5,560)"),
         ("Calibration protocol", "Single temperature, NLL fit (evaluate.fit_temperature). Original fit on the mismatched validation set (superseded); refit on the training-time validation split; test set never used for fitting"),
         ("Evaluation metrics", "Confusion-matrix metrics (manual + sklearn cross-check), AUROC (sklearn + DeLong cross-check), PR-AUC, Brier, log loss, ECE (10 bins)"),
-        ("Statistical methods", "Wilson CIs; stratified / patient-cluster percentile bootstrap (B=2000); DeLong AUROC CI; exact McNemar + paired DeLong with Holm correction"),
+        ("Statistical methods", "Wilson CIs; stratified / patient-cluster percentile bootstrap (B=2000); DeLong AUROC CI; exact McNemar with Holm correction (paired DeLong undefined: both AUROCs = 1)"),
         ("Missing data / predictions", "No per-image predictions were saved originally (regenerated); B0 run folder log empty (identical-weights run 20260920T095427Z has the full log); B3 training_log.csv lost (console-parsed version used); training-time split manifest not saved at training time (rebuilt by script 11)"),
         ("Leakage concerns and evidence", "Train/val<->test patient overlap 0 after exclusion; 0 exact or visually confirmed near duplicates test<->pool; validation-set mismatch at evaluation time contaminates threshold/temperature; test set distribution differs from training (dimensions, border artifact)"),
         ("External validation", "Added by this audit (script 13): OCTDL (Optovue; 147 DME / 332 normal B-scans, 217 patients), Duke 2014 (Spectralis; 15 DME / 15 normal volumes) and Duke 2015 (Spectralis; DME-only, sensitivity only). Small public sets; no clinically graded or prospective cohort; no validated volume aggregation rule"),
-        ("Deviation from original methodology (this audit)", "No retraining. New: re-inference of saved checkpoints on test set and on the readable images of the 305 excluded patients (count in Table 1 / Table 2); leakage scans; statistics"),
+        ("Deviation from original methodology (this audit)", "No classifier retraining (the fluid U-Net was retrained in a separate session, report §10.2). New: re-inference of saved checkpoints on test set and on the readable images of the 305 excluded patients (count in Table 1 / Table 2); leakage scans; statistics"),
     ]
     write(pd.DataFrame(t5, columns=["Item", "Detail"]), "table5_reproducibility_limitations", "Table 5. Reproducibility and limitations", "Compiled from source code, run logs, checkpoints and this audit's scripts.")
     print("tables written")

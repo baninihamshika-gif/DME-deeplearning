@@ -288,7 +288,10 @@ def main():
            "independently of scripts 08, 09 and 14; compared with every plotted, tabulated and reported comparison value.", "",
            "| Area | Check | Result | Detail |", "|---|---|---|---|"]
     out += [f"| {a} | {b} | **{c}** | {d.replace('|', '/')} |" for a, b, c, d in results]
-    (AUDIT / "value_validation.md").write_text("\n".join(out) + "\n", encoding="utf8")
+    dst = AUDIT / "value_validation.md"
+    keep = dst.read_text(encoding="utf8").split("\n## Scope and limits", 1) if dst.exists() else []
+    tail = "\n## Scope and limits" + keep[1] if len(keep) == 2 else ""  # hand-written section is kept across re-runs
+    dst.write_text("\n".join(out) + "\n" + tail.rstrip("\n") + ("\n" if tail else ""), encoding="utf8")
     for a, b, c, d in results:
         print(f"{c} [{a}] {b} -- {d}")
     sys.exit(any(c == "FAIL" for _, _, c, _ in results))

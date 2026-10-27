@@ -99,4 +99,4 @@ On unseen images from the same dataset, all three models **make errors at a rate
 2. The Kaggle-time split manifest (see §5), to make thresholds and calibration valid.
 3. Prospective or consecutive (unselected) images, to estimate performance at realistic prevalence.
 
-Nothing in this audit retrained a model or changed any checkpoint.
+Nothing in this audit retrained a classifier or changed any classifier checkpoint. (The fluid-segmentation U-Net was retrained later in a separate session, with new checkpoints; the original checkpoint is unchanged. See report §10.2.)

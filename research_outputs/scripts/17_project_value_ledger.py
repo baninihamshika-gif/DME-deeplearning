@@ -14,7 +14,9 @@ the dataset counts, recomputed from first sources where the inputs exist.
   refit_calibration_threshold.csv            temperature + threshold refit on the validation split
   leakage_summary.json                       dataset counts, overlap, duplicates, image widths
   segmentation_summary.json                  original U-Net audit (from per-image rows)
-  segmentation_retrain/segmentation_summary.json  retrained U-Net (from per-image rows)
+  segmentation_retrain/segmentation_summary.json     retrained U-Net v1, superseded (from per-image rows)
+  segmentation_retrain_v2/segmentation_summary.json  retrained U-Net v2, current (from per-image rows)
+  gradcam_localisation/summary.json          Grad-CAM localisation on Duke 2015 (from per-scan rows)
   tables/table1_dataset_setup.csv            dataset counts
   research_results_report.md                 every remaining number (counts, percentages, 1-2 decimals)
 
@@ -332,6 +334,7 @@ def main():
     for rdir, tag in ((RT2, "v2, current"), (RT, "v1, superseded")):
         rp = check_retrain(rdir, f"Results: segmentation retrain {tag}")
     rp = pd.read_csv(RT2 / "segmentation_per_image.csv", dtype={"subject": str})  # report counts below refer to v2
+    check_gradcam()
 
     # ---------------- every count, percentage and 1-2 decimal number in the report and checklist
     report_numbers(tr, du, dk, oc, rp)
@@ -363,6 +366,27 @@ def main():
 def md_table(df):
     cell = lambda v: f"{v:,}" if isinstance(v, (int, np.integer)) else str(v)
     return "\n".join(["| " + " | ".join(map(str, df.columns)) + " |", "|" + "---|" * len(df.columns)] + ["| " + " | ".join(cell(v) for v in r) + " |" for r in df.itertuples(index=False)])
+
+
+def check_gradcam():
+    """Grad-CAM localisation on Duke 2015 fluid masks: group means and the selection rule, from per-scan rows."""
+    art, gd = "Results: Grad-CAM localisation (Duke 2015)", REPO / "research_outputs" / "gradcam_localisation"
+    ps = pd.read_csv(gd / "per_scan.csv", dtype={"subject": str}); gs = json.loads((gd / "summary.json").read_text())
+    grp = {"selection_01-05": ps.subject.astype(int) <= 5, "confirmation_06-10": ps.subject.astype(int) >= 6}
+    src = "gradcam_localisation/per_scan.csv (mean over scans with grader-1 fluid)"
+    for g, mask in grp.items():
+        for v, kv in gs["results"][g].items():
+            d = ps[mask & (ps.variant == v)]
+            exp = {"n_scans": len(d), "auroc": d.auroc.mean(), "pointing": d.pointing_hit.astype(str).eq("True").mean(),
+                   "mass_in_fluid": d.mass_in_fluid.mean(), "fluid_frac": d.fluid_frac_of_band.mean()}
+            for k, val in kv.items():
+                rec(art, f"{g} · {v} · {k}", val, exp[k], src, tol=1e-9)
+    sel = gs["results"]["selection_01-05"]
+    best = max(sel, key=lambda v: (sel[v]["auroc"], sel[v]["pointing"]))
+    rec(art, "chosen variant = highest mean pixel AUROC on subjects 01-05", gs["chosen_variant"], best, "selection rule applied to recomputed means")
+    for v, c in gs["randomisation_mean_corr_confirmation"].items():
+        rec(art, f"randomisation check · {v} · mean correlation", c, c, "needs the heatmaps of the re-initialised classifier (not saved)", "SOURCE ONLY")
+        rec(art, f"randomisation check · {v} · passes (< {gs['randomisation_threshold']})", float(c < gs["randomisation_threshold"]), 1.0, "summary.json threshold")
 
 
 def check_retrain(rdir, art):
@@ -429,19 +453,43 @@ def report_numbers(tr, du, dk, oc, rp):
             f = float(str(x).replace(",", ""))
         except (ValueError, TypeError):
             return
-        if f != f:
+        if f != f or abs(f) == float("inf"):
             return
+        f = abs(f)  # documents print the sign as a separate "−" character, which the number regex does not capture
         if f == int(f):
             ints.setdefault(int(f), where)
-        for d in (0, 1, 2):
+        for d in (0, 1, 2, 3):
             pcts.setdefault(round(f * 100, d), where + " (×100)")
-        for d in (1, 2):
+        for d in (1, 2, 3, 4):
             decs.setdefault(round(f, d), where)
     cnt = {"train folder DME images (image_hashes.csv)": int((tr.label == 1).sum()), "train folder Normal images (image_hashes.csv)": int((tr.label == 0).sum()),
            "B-scans in external_predictions_duke2014.csv": len(du), "B-scans in external_predictions_duke2015.csv": len(dk), "images in external_predictions_octdl.csv": len(oc)}
     man = pd.read_csv(DATA / "training_split_manifest.csv")
     for (sp, lab), n in man.groupby(["split", "label"]).size().items():
         cnt[f"training_split_manifest.csv {sp} {lab}"] = n
+    for sp, n in man.groupby("split").patient.nunique().items():
+        cnt[f"training_split_manifest.csv {sp} patients"] = n
+    cnt["Duke 2015 annotated scans in training subjects (110 - val - test rows)"] = 110 - len(rp)
+    cnt["train folder images - 6,997 Kaggle-logged validation images (pre-exclusion training folds)"] = len(tr) - 6997
+    if (AUDIT / "value_ledger.csv").exists():
+        vl0 = pd.read_csv(AUDIT / "value_ledger.csv")
+        for a, n in vl0.artifact.value_counts().items():
+            cnt[f"value_ledger.csv rows for {a}"] = n
+        for pap, n in vl0[vl0.status == "FOUND IN TEXT"].item.str.split(" \\[").str[0].value_counts().items():
+            cnt[f"value_ledger.csv published values found in text: {pap}"] = n
+    ppc = pd.read_csv(DATA / "per_paper_comparison.csv")
+    cnt["per_paper_comparison.csv rows of the five papers"] = int((ppc.paper != "This project").sum())
+    f1v = pd.read_csv(REPO / "research_outputs/figures/figure1_within_project_performance_plotted_values.csv")
+    for hl, n in f1v.headline.value_counts().items():
+        cnt[f"Figure 1 plotted {'bars' if hl else 'dots'}"] = n
+    t2 = rp[rp.split == "test"]
+    add(t2[t2.gt1_fluid_pixels > 0].dice_model_vs_g2.mean(), "v2 test: mean Dice vs grader 2 on fluid-positive scans (per-image rows)")
+    T = pd.read_csv(DATA / "calibration_summary.csv").set_index("model")
+    for m in ALL4:
+        tp_ = pd.read_csv(DATA / f"test_predictions_{PRED_FILE[m]}.csv"); wrong = tp_[(tp_.p_dme_raw >= 0.5).astype(int) != tp_.label]
+        for _, w in wrong.iterrows():
+            add(1 / (1 + np.exp(-(w.logit_dme - w.logit_normal) / T.loc[m, "temperature"])), f"{m} refit P(DME) of misclassified {w.filename}")
+        add(T.loc[m, "ece10_raw_reported"] - T.loc[m, "ece10_calibrated_contaminated_reported"], f"{m} reported ECE change (raw - superseded calibrated)")
     for sp, n in man.split.value_counts().items():
         cnt[f"training_split_manifest.csv {sp}"] = n
     if (AUDIT / "value_ledger.csv").exists():
@@ -478,7 +526,7 @@ def report_numbers(tr, du, dk, oc, rp):
         add(r["expected"], f"recomputed: {r['artifact']} · {r['item']}")
     files = sorted(glob.glob(str(DATA / "*.csv")) + glob.glob(str(RT / "*.csv")) + glob.glob(str(RT2 / "*.csv")) + glob.glob(str(TAB / "*.csv")) + [str(AUDIT / "literature_extraction.csv")])
     for f in files:
-        if re.search(r"predictions|per_image|roc_coordinates|hashes|manifest|near_duplicate|reliability|misclassified|training_log", Path(f).name):
+        if re.search(r"predictions|per_image|roc_coordinates|hashes|manifest|near_duplicate|reliability|training_log", Path(f).name):
             continue  # per-row files: any count would match some pixel count or index by chance
         d = pd.read_csv(f, dtype=str, low_memory=False)
         for c in d.columns:
@@ -494,7 +542,7 @@ def report_numbers(tr, du, dk, oc, rp):
                 walk(v, path)
         else:
             add(o, path)
-    for f in glob.glob(str(DATA / "*.json")) + glob.glob(str(RT / "*.json")) + glob.glob(str(RT2 / "*.json")):
+    for f in glob.glob(str(DATA / "*.json")) + glob.glob(str(RT / "*.json")) + glob.glob(str(RT2 / "*.json")) + glob.glob(str(REPO / "research_outputs/gradcam_localisation/*.json")) + [str(REPO / "artifacts/gradcam_randomization.json")]:
         try:
             walk(json.loads(Path(f).read_text()), Path(f).name)
         except (ValueError, OSError):
@@ -505,11 +553,28 @@ def report_numbers(tr, du, dk, oc, rp):
              "626": "download size of 2014_BOE_Srinivasan.zip (MB), external file",
              "3,000": "fixed sample size of the brute-force AUROC check (10_final_checks.py)",
              "254": "pytest run output (tests/); re-run at each commit"}
-    SKIP = r"(?:§|Figure |Fig\. |Table |Phase |\[|B=|B = |seed |seed=|page |p\. |pp\. |doi|DOI|v|Section |S|step |Step |#+ |epoch |Check |check |Python |python |==)$"
-    for doc in ("research_results_report.md", "final_audit_checklist.md"):
-        t = (REPO / "research_outputs" / doc).read_text(encoding="utf8")
+    cited_doc = {  # numbers that exist only in an unsaved run output, a log line, a version pin or a setting
+        ("segmentation_retrain_report.md", "0.13"): "v1 whole-frame pooled Dice from the diagnostic full_frame_check run (not saved in v1's summary)",
+        ("leakage_audit.md", "6,997"): "pre-exclusion validation size in the Kaggle training log (full_run_log.txt)",
+        ("metric_verification.md", "6,997"): "pre-exclusion validation size in the Kaggle training log (full_run_log.txt)",
+        ("repository_inventory.md", "6997"): "pre-exclusion validation size in the Kaggle training log (full_run_log.txt)",
+        ("repository_inventory.md", "6,997"): "pre-exclusion validation size in the Kaggle training log (full_run_log.txt)",
+        ("leakage_audit.md", "7,535"): "pre-exclusion validation size of the local scikit-learn 1.9.0 split (evaluate.py run output)",
+        ("metric_verification.md", "7,535"): "pre-exclusion validation size of the local scikit-learn 1.9.0 split (evaluate.py run output)",
+        ("repository_inventory.md", "7,535"): "pre-exclusion validation size of the local scikit-learn 1.9.0 split (evaluate.py run output)",
+        ("repository_inventory.md", "150"): "figure resolution setting (dpi) of the original scripts",
+        ("repository_inventory.md", "83"): "line number in full_run_log.txt",
+        ("repository_inventory.md", "1.26"): "numpy version pinned in requirements.txt",
+        ("value_validation.md", "46"): "number of distinct §8.1 values counted by script 15 (its own output)"}
+    SKIP =r"(?:§|Figure |Fig\. |Table |Phase |\[|B=|B = |seed |seed=|page |p\. |pp\. |doi|DOI|v|Section |S|step |Step |#+ |epoch |Check |check |Python |python |==)$"
+    # report and checklist: 1-2 decimals here (3-4 decimals in script 16); every other document: up to 4 decimals here
+    docs = [("research_results_report.md", REPO / "research_outputs/research_results_report.md", 2), ("final_audit_checklist.md", REPO / "research_outputs/final_audit_checklist.md", 2),
+            ("segmentation_retrain_report.md", REPO / "research_outputs/segmentation_retrain_report.md", 4)]
+    docs += [(p.name, p, 4) for p in sorted(AUDIT.glob("*.md")) if not p.name.startswith(("value_ledger", "output_folder_verification"))]
+    for doc, path, maxdp in docs:
+        t = path.read_text(encoding="utf8")
         t = t.split("\n## 19. References")[0]
-        for mt in re.finditer(r"(?<![\w.\-/:])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d{1,2})?)(%?)(?![\w.]\d|\d|[\w/])", t):
+        for mt in re.finditer(r"(?<![\w.\-/:])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d{1,%d})?)(%%?)(?![\w.]\d|\d|[\w/])" % maxdp, t):
             n, pct = mt.group(1), mt.group(2); f = float(n.replace(",", ""))
             pct = pct or ("%" if re.match(r"[–-]\d+(?:\.\d+)?%", t[mt.end():]) else "")  # "58–60%": both ends are percentages
             if re.match(r"\(\d+\)", t[mt.end():]) or re.match(r"\.\*", t[mt.end():]):
@@ -518,8 +583,9 @@ def report_numbers(tr, du, dk, oc, rp):
                 continue
             sec = re.findall(r"^#+ (.+)$", t[:mt.start()], re.M); ctx = t[max(0, mt.start() - 40):mt.start()].splitlines()[-1].strip()[-40:]
             item = f"{(sec[-1] if sec else '')[:40]} · {ctx}"
-            if n in cited:
-                L.append({"artifact": doc + " (counts, %)", "item": item, "value_shown": n + pct, "expected": n, "expected_source": cited[n], "status": "SOURCE ONLY", "note": ""})
+            why = cited_doc.get((doc, n)) or cited.get(n)
+            if why:
+                L.append({"artifact": doc + " (counts, %)", "item": item, "value_shown": n + pct, "expected": n, "expected_source": why, "status": "SOURCE ONLY", "note": ""})
                 continue
             dp = len(n.split(".")[1]) if "." in n else 0
             where = pcts.get(round(f, dp)) if pct else (decs.get(round(f, dp)) if dp else ints.get(int(f)))

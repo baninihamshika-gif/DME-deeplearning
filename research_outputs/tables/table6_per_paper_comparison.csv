@@ -19,4 +19,4 @@ Range AUROC (k),0.993–1.000 (12),0.899–0.965 (16),0.904–0.990 (7),0.978–
 "Unit-matched project value (EfficientNet-B3, 0.5)",NA,"Kermany official test (B-scan, internal, n=484): Sens 0.996, Spec 1.000, AUROC 1.000","Duke 2014 Spectralis (volume, max rule, external, n=30): Sens 1.000, Spec 0.467, AUROC 1.000","Kermany official test (B-scan, internal, n=484): Sens 0.996, Spec 1.000, AUROC 1.000","Duke 2014 Spectralis (volume, max rule, external, n=30): Sens 1.000, Spec 0.467, AUROC 1.000","Kermany official test (B-scan, internal, n=484): Sens 0.996, Spec 1.000, AUROC 1.000"
 Learning curves,Figure 4,NR,NR,NR,NR,NR
 Calibration (ECE / Brier),"Figure 5, Table 2",NR,NR,NR,NR,NR
-Fluid segmentation (Dice),"Report §10 (retrained U-Net, pooled Dice 0.706)",NA (classification only),NA (classification only),NA (classification only),NA (classification only),NA (classification only)
+Fluid segmentation (Dice),"Report §10.2 (retrained U-Net v2, test pooled Dice 0.638; graders 0.694)",NA (classification only),NA (classification only),NA (classification only),NA (classification only),NA (classification only)

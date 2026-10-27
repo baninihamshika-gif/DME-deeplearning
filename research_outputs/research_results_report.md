@@ -19,7 +19,7 @@ To detect diabetic macular edema (DME) versus normal retina from single 2D OCT B
 - **Classifiers [R]:** timm `tf_efficientnet_b3` (primary), `tf_efficientnet_b0` and `resnet50`. Each starts from ImageNet weights, has a 2-class head and dropout 0.3, and is fine-tuned in two phases: head only for 5 epochs (LR 1e-3), then the full network for up to 25 more epochs (LR 1e-5). Loss is class-weighted cross-entropy. An ablation `tf_efficientnet_b3` was trained with label smoothing 0.05.
 - **Selected checkpoints [R]** (`checkpoint_metadata.json`): B3 at epoch 20 (validation AUROC 0.9958); B0 at epoch 19 (0.9950; *previously reported as "not recorded"*); ResNet-50 at epoch 30 (0.9961). Selection used the best validation AUROC.
 - **Positive class:** DME (index 1). Scores are softmax P(DME).
-- **Explainability [E]:** Grad-CAM on `conv_head`, with a classifier-weight randomisation sanity check (mean correlation −0.117). Not regenerated here.
+- **Explainability [E]:** Grad-CAM on `conv_head`, with a classifier-weight randomisation sanity check (mean correlation −0.117). Not regenerated here. The app's heatmap was later moved to `blocks[5]` after a localisation benchmark on Duke 2015 fluid masks (§11).
 - **Calibration [E/R]:** single-temperature scaling (§11).
 - **Segmentation [R]:** a U-Net (`smp`, EfficientNet-B3 encoder initialised from the classifier) trained on Duke DME fluid masks (§10).
 - **Not implemented:** 3D/volumetric models, ensembles. External data were not part of the original project; this audit added an external evaluation (§7.4).
@@ -77,7 +77,7 @@ Error rates rise from 0.2% to about 2.5–2.9%, and AUROC is 0.996–0.997, matc
 - **Proportions:** Wilson score 95% CIs. **F1:** class-stratified percentile bootstrap, B = 2,000, seed 42.
 - **AUROC:** sklearn, cross-checked against an independent fast-DeLong implementation (Sun & Xu 2014) and a brute-force O(mn) implementation. 95% CI by DeLong (1988).
 - **Supplementary pool:** patient-cluster percentile bootstrap (B = 2,000, seed 42), because patients contribute many images.
-- **Paired comparisons:** exact McNemar on discordant classifications at 0.5, and paired DeLong for AUROC. Holm correction across the three pairwise comparisons.
+- **Paired comparisons:** exact McNemar on discordant classifications at 0.5, with Holm correction across the three pairwise comparisons. A paired DeLong test for AUROC was planned but is undefined here (both AUROCs are 1, so the variance is zero); `paired_model_comparisons.csv` leaves its p-value empty and says why.
 - **Calibration:** Brier score, log loss, and ECE with 10 equal-width bins (the binning used by the original `evaluate.py`).
 - **Not done, deliberately:** significance tests between this project and published studies (unrelated cohorts); CIs for published metrics that did not report them; any analysis on rounded published values.
 
@@ -321,8 +321,8 @@ After this audit, the U-Net was retrained in a separate session (branch `claude/
 
 **There were two retrains. v2 is the current model; v1 is superseded.**
 
-- **v1 (superseded; code `da997e8`, results in `research_outputs/segmentation_retrain/`).** The loss masked out the letterbox padding and the ungraded side margins. On the graded band its test pooled Dice was 0.706 (fluid-positive mean 0.633). On a whole frame, however, it predicted fluid on about 40% of the ungraded margins and 94% of the padding (val subjects), so it is not usable in `app.py`. Its graded-band numbers are correct as stated but describe a model that is not used.
-- **v2 (current; code `65d4b78`, merged as `7f8fe26`; results in `research_outputs/segmentation_retrain_v2/`).** The loss covers the whole frame, so padding and ungraded margins count as background. This accepts some label noise, because any unmarked fluid in the margins is learned as background. The checkpoint is git-ignored at `artifacts/segmentation_retrain_v2/checkpoint_best.pt`. `app.py` uses it at threshold 0.95.
+- **v1 (superseded; code `da997e8`, results in `research_outputs/segmentation_retrain/`, same files including `train_log.txt`).** The loss masked out the letterbox padding and the ungraded side margins. On the graded band its test pooled Dice was 0.706 (fluid-positive mean 0.633). On a whole frame, however, it predicted fluid on about 40% of the ungraded margins and 94% of the padding (val subjects), so it is not usable in `app.py`. Its graded-band numbers are correct as stated but describe a model that is not used.
+- **v2 (current; code `65d4b78`, merged as `7f8fe26`; results in `research_outputs/segmentation_retrain_v2/`: summary, per-image rows, per-epoch log and the console log `train_log.txt`).** The loss covers the whole frame, so padding and ungraded margins count as background. This accepts some label noise, because any unmarked fluid in the margins is learned as background. The checkpoint is git-ignored at `artifacts/segmentation_retrain_v2/checkpoint_best.pt`. `app.py` uses it at threshold 0.95.
 
 - **What is the same in both:**
   - Metrics use graded pixels only (the layer band of §10.1), at native 496×768 resolution.
@@ -364,6 +364,12 @@ Source: `calibration_summary.csv`, Figure 5.
 - **These calibration numbers carry little information.** 482–483 of 484 predictions fall in the two outermost bins.
 - Calibration cannot change AUROC; this was confirmed.
 - **Grad-CAM [E]:** examples are selected deterministically (most confident correct DME and Normal, worst-margin error). The randomisation test shows dependence on the trained classifier weights, but not clinical validity of the highlighted regions. No heatmap is offered as evidence of clinical reasoning.
+- **Grad-CAM localisation on Duke 2015 fluid masks [N]** (separate session; `research_outputs/scripts/gradcam_localisation_duke.py`, results in `research_outputs/gradcam_localisation/`). Seven CAM variants of the EfficientNet-B3 classifier were scored against grader-1 fluid on the graded Duke 2015 scans with fluid. The rule was fixed in advance: highest mean pixel AUROC on subjects 01–05 (40 scans), with subjects 06–10 (38 scans) for confirmation only. `app.py` now uses the chosen variant, Grad-CAM on `blocks[5]` (10×10) explaining logit(DME) − logit(Normal).
+  - Selection subjects: pixel AUROC 0.943, against 0.923 for the previous `conv_head` map. Pointing game 0.625 vs 0.600.
+  - Confirmation subjects: pixel AUROC 0.938, slightly **below** the previous map (0.943), with equal or better pointing (0.658 vs 0.553) and CAM mass on fluid (0.050 vs 0.042, where fluid is 1.3% of the band). The choice is therefore not confirmed as better on AUROC; it is a comparable map selected by a fixed rule.
+  - Every variant passes the randomisation sanity check (mean correlation with a re-initialised classifier < 0.5; chosen variant 0.361).
+  - **Audit check [R]:** every group mean and the variant choice were recomputed from the per-scan rows (`research_audit/value_ledger_project.csv`). The randomisation correlations need saved heatmaps and are taken from the source.
+  - Localisation of fluid pixels is not evidence of clinical reasoning; the classifier was never trained on fluid masks.
 
 ## 12. Figure captions
 

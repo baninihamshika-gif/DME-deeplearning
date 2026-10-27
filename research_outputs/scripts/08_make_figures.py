@@ -236,10 +236,11 @@ def figure3():
         for it in [i for i in items if i[0] == g]:
             yy.append(cur); ylab.append(it[1]); cur += 1
             col = "#2a78d6" if g.startswith("This") else ("#eb6834" if "category B" in g else INK2)
-            if not np.isnan(it[3]):
+            ci = not np.isnan(it[3]) and it[4] > it[3]  # a zero-width (degenerate DeLong) interval is not drawn
+            if ci:
                 ax.errorbar([it[2]], [cur - 1], xerr=[[max(0, it[2] - it[3])], [max(0, it[4] - it[2])]], fmt="none", ecolor=col, elinewidth=1.2, capsize=3)
             ax.plot([it[2]], [cur - 1], "o" if it[5] else "s", ms=7, color=col if it[5] else "white", mec=col, mew=1.5)
-            ax.text(1.009, cur - 1, f"{it[2]:.3f}" + ("" if np.isnan(it[3]) else f" ({it[3]:.3f}–{it[4]:.3f})"), va="center", fontsize=7.5, color=INK)
+            ax.text(1.009, cur - 1, f"{it[2]:.3f}" + (f" ({it[3]:.3f}–{it[4]:.3f})" if ci else ""), va="center", fontsize=7.5, color=INK)
             rows.append({"group": g, "label": it[1], "auroc": it[2], "ci_lo": it[3], "ci_hi": it[4]})
         cur += 0.4
     for g, gy in groups:
@@ -250,8 +251,8 @@ def figure3():
     fig.text(0.02, -0.02, "Not a head-to-head comparison: every row uses a different dataset, population, device, label definition and evaluation protocol. "
              "\nTang 2021 'DME' includes retinal thickening and hard exudates in diabetic eyes; this project's 'DME vs Normal' uses Kermany folder labels. "
              "Square markers = volume-level results (different evaluation unit; context only).\nThe x-axis starts at 0.80 to resolve the published intervals; "
-             "no statistical test\nacross studies was performed. Volume-level rows show primary datasets only; all external results are listed in Table 3.\nLi 2019 CIs are printed values, narrower than binomial for its n (Table 3 notes); DMENet (Singh & Gorantla 2020) uses fundus photographs and is shown as a different-modality reference only.\n"
-             "This project's official-test AUROC has no meaningful CI (perfect separation).", fontsize=7, color=INK2)
+             "no statistical test across studies was performed.\nVolume-level rows show primary datasets only; all external results are listed in Table 3.\nLi 2019 CIs are printed values, narrower than binomial for its n (Table 3 notes); DMENet (Singh & Gorantla 2020) uses fundus photographs and is shown as a different-modality reference only.\n"
+             "This project's official-test and Duke 2014 AUROCs have no meaningful CI (perfect separation; the DeLong interval has zero width).", fontsize=7, color=INK2)
     save(fig, "figure3_literature_context", pd.DataFrame(rows))
 
 
