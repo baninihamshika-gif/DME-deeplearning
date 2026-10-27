@@ -89,7 +89,7 @@ def figure1():
             ax.errorbar(pos[ok], vals[ok], yerr=[vals[ok] - lo[ok], hi[ok] - vals[ok]], fmt="none", ecolor=INK, elinewidth=0.8, capsize=2)
             for (k, _), v, l_, h_ in zip(metrics, vals, lo, hi):
                 rows.append({"panel": "a", "source": "This project", "model": s, "metric": k, "value": v, "ci_lo": l_, "ci_hi": h_, "headline": True})
-            others = pp[(pp.paper == "This project") & (pp.model == s) & ~pp.headline]
+            others = pp[(pp.paper == "This project") & (pp.model == s) & (pp.setting_key != "official_test")]  # the bar is the official test
         else:
             d = pp[pp.paper == s]; h = d[d.headline].iloc[0]
             vals = np.array([h[k] for k, _ in metrics])
@@ -98,7 +98,7 @@ def figure1():
                 rows.append({"panel": "a", "source": s, "model": h.model, "metric": k, "value": v, "ci_lo": h.auroc_ci_lo if k == "auroc" else np.nan,
                              "ci_hi": h.auroc_ci_hi if k == "auroc" else np.nan, "headline": True})
                 if np.isnan(v):
-                    ax.text(p_, 0.42, "NR", rotation=90, ha="center", va="bottom", fontsize=6.5, color=INK2)
+                    ax.text(p_, 0.37, "NR", rotation=90, ha="center", va="bottom", fontsize=6.5, color=INK2)
                 allv = d[k].dropna()
                 if len(allv) > 1:  # min-max bracket over all rows of this paper
                     ax.plot([p_, p_], [allv.min(), allv.max()], color=INK, lw=0.9, alpha=0.8)
@@ -110,7 +110,7 @@ def figure1():
             rows += [{"panel": "a_other_rows", "source": "This project" if s in MODELS else s, "model": s, "metric": k, "value": z, "headline": False} for z in v]
     for xi in x[:-1]:
         ax.axvline(xi + 0.5, color=GRID, lw=1)
-    ax.set_xticks(x, [lab for _, lab in metrics]); ax.set_ylim(0.4, 1.04); ax.set_ylabel("Reported value"); ax.grid(axis="x", visible=False)
+    ax.set_xticks(x, [lab for _, lab in metrics]); ax.set_ylim(0.35, 1.04); ax.set_ylabel("Reported value"); ax.grid(axis="x", visible=False)
     from matplotlib.lines import Line2D
     hl, lb = ax.get_legend_handles_labels()
     hl += [Line2D([], [], marker="o", color="white", mec=INK, mew=0.6, ls="none", ms=4), Line2D([], [], color=INK, lw=0.9)]
@@ -121,7 +121,7 @@ def figure1():
              "(rule in 14_per_paper_comparison.py: internal B-scan/image-level result if reported, otherwise the main-text primary result).\n"
              "Project dots = the same model on the unseen pool, OCTDL and Duke 2014 (volume). Not a head-to-head comparison: datasets, populations, devices, label definitions and evaluation units "
              "differ for every source; no cross-study statistical test.\nZhu and Rodríguez-Miguel headlines are volume-level; Singh & Gorantla use fundus photographs. NR = not reported. "
-             "The project's official-test values have no meaningful CI (perfect separation). Y-axis starts at 0.40.", fontsize=7.3, color=INK2)
+             "The project's official-test values have no meaningful CI (perfect separation). Y-axis starts at 0.35.", fontsize=7.3, color=INK2)
     save(fig, "figure1_within_project_performance", pd.DataFrame(rows))
 
 
